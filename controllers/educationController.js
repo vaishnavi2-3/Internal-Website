@@ -272,6 +272,7 @@ const saveEducationDetails = async (req, res) => {
 
     // Save to MongoDB
     const newEducation = new Education({
+      employeeId: body.employeeId,
       schoolName10: body.schoolName10,
       year10: body.year10,
       cgpa10: body.cgpa10,
