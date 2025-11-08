@@ -22,7 +22,7 @@
 // module.exports = router;
 // /////////////////////////////////routes/personaldetailsRoutes
 const express = require("express");
-const { registerEmployee,getAllEmployees,getEmployeeById } = require("../controllers/employeeController");
+const { registerEmployee,getAllEmployees,getEmployeeById,getEmployeeByEmail } = require("../controllers/employeeController");
 const { loginEmployee,handlePassword } = require("../controllers/authController");
 const router = express.Router();
 
@@ -30,6 +30,7 @@ router.post("/register", registerEmployee);
 router.post("/login", loginEmployee);
 router.get("/", getAllEmployees);
 router.get("/:id", getEmployeeById);
+router.get("/email/:email", getEmployeeByEmail);
 
 
 // Forgot Password (generate reset link)

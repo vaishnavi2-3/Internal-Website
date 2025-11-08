@@ -73,3 +73,23 @@ exports.getEmployeeById = async (req, res) => {
     res.status(500).json({ msg: "Server Error", error: err.message });
   }
 };
+exports.getEmployeeByEmail = async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    const employee = await Employee.findOne({ email }).select("-password");
+
+    if (!employee) {
+      return res.status(404).json({ msg: "Employee not found" });
+    }
+
+    res.status(200).json({
+      msg: "Employee fetched successfully by Email",
+      employee,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching employee by Email:", err);
+    res.status(500).json({ msg: "Server Error", error: err.message });
+  }
+};
+

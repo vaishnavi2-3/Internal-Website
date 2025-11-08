@@ -41,12 +41,16 @@ app.use("/api/professional", professionalRoutes);
 app.use("/api/leaves",leaveRoutes);
 app.use("/api/timesheet", timesheetRoutes);
 app.use("/api/tasks", taskRoutes);
+<<<<<<< HEAD
 
 //
 
 app.use("/api/professionalHr", professionalHrRoutes);
 
 console.log("serevr");
+=======
+//onsole.log("serevr");
+>>>>>>> 5cca2c4f1c5151d4826fc7de1b1b5621e622d63b
 // ✅ Default test route
 app.get("/", (req, res) => res.send("Server running OK 🚀"));
 
