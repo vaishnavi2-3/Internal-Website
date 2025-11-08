@@ -110,19 +110,29 @@ const saveEducationDetails = async (req, res) => {
 };
 
 // ---------- Controller: Get All Education Records ----------
+
+
+// Get all education details
 const getAllEducationDetails = async (req, res) => {
   try {
-    const data = await Education.find();
+    const educationRecords = await EducationDetails.find();
     res.status(200).json({
-      msg: "✅ All education records fetched successfully!",
-      count: data.length,
-      data,
+      success: true,
+      count: educationRecords.length,
+      data: educationRecords,
     });
   } catch (error) {
     console.error("Error fetching education records:", error);
-    res.status(500).json({ msg: "Server Error", error: error.message });
+    res.status(500).json({
+      msg: "Error fetching education records",
+      error: error.message,
+    });
   }
 };
+
+
+
+
 
 // ---------- Controller: Get Single Record by ID ----------
 const getEducationDetailsById = async (req, res) => {

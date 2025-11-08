@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
-console.log("🔥 Professional route loaded");
+// console.log("🔥 Professional route loaded");
 
 const {
   saveProfessionalDetails,

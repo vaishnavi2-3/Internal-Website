@@ -5,6 +5,18 @@ const connectDB = require("./config/db");
 const path=require('path');
 const fs=require('fs');
 const { BlobServiceClient } = require("@azure/storage-blob");
+const cron = require("node-cron");
+const axios = require("axios");
+
+// 🕒 Every 10 minutes, ping your own API to prevent sleep
+cron.schedule("*/10 * * * *", async () => {
+  try {
+    const response = await axios.get("https://your-api-domain.com/health");
+    console.log("✅ API pinged successfully:", response.status);
+  } catch (err) {
+    console.error("⚠️ API ping failed:", err.message);
+  }
+});
 
 
 // ✅ Import routes
@@ -15,6 +27,8 @@ const professionalRoutes = require("./routes/professionalRoutes");
 const leaveRoutes=require('./routes/leaveRoutes');
 const timesheetRoutes = require("./routes/timesheetRoutes");
 const taskRoutes = require("./routes/taskRoutes");
+const finalRoutes = require("./routes/finalRoutes"); // <-- your employee routes file
+
 
 
 // serve uploaded files statically
@@ -41,6 +55,8 @@ app.use("/api/professional", professionalRoutes);
 app.use("/api/leaves",leaveRoutes);
 app.use("/api/timesheet", timesheetRoutes);
 app.use("/api/tasks", taskRoutes);
+app.use("/api", finalRoutes); 
+
 //onsole.log("serevr");
 // ✅ Default test route
 app.get("/", (req, res) => res.send("Server running OK 🚀"));
