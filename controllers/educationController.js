@@ -255,8 +255,13 @@ const getAllEducationDetails = async (req, res) => {
 const getEducationDetailsById = async (req, res) => {
   try {
     const record = await Education.findById(req.params.id);
-    if (!record) return res.status(404).json({ msg: "❌ Record not found" });
-    res.status(200).json({ msg: "✅ Education record fetched successfully!", data: record });
+    if (!record) {
+      return res.status(404).json({ msg: "❌ Record not found" });
+    }
+    res.status(200).json({
+      msg: "✅ Education record fetched successfully!",
+      data: record,
+    });
   } catch (error) {
     console.error("Error fetching education record:", error);
     res.status(500).json({ msg: "Server Error", error: error.message });

@@ -26,6 +26,6 @@ router.post("/save", uploadFields, saveEducationDetails);
 router.get("/", getAllEducationDetails);
 
 //  GET: Fetch education details by MongoDB _id
-router.get("/id", getEducationDetailsById);
+router.get("/:id", getEducationDetailsById);
 
 module.exports = router;
