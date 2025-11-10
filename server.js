@@ -8,9 +8,9 @@ const { BlobServiceClient } = require("@azure/storage-blob");
 const cron = require("node-cron");
 
 // 🕒 Run every minute
-cron.schedule("* * * * *", () => {
-  console.log("⏰ Cron Job Running Every Minute!");
-});
+// cron.schedule("* * * * *", () => {
+//   console.log("⏰ Cron Job Running Every Minute!");
+// });
 
 
 // ✅ Import routes
@@ -23,6 +23,8 @@ const timesheetRoutes = require("./routes/timesheetRoutes");
 const taskRoutes = require("./routes/taskRoutes");
 const finalRoutes = require("./routes/finalRoutes"); // <-- your employee routes file
 const professionalHrRoutes = require("./routes/professionalHrRoutes");
+const holidayRoutes = require("./routes/holidayRoutes");
+
 
 
 // serve uploaded files statically
@@ -51,6 +53,8 @@ app.use("/api/timesheet", timesheetRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api", finalRoutes); 
 app.use("/api/professionalHr", professionalHrRoutes); 
+app.use("/api/holidays", holidayRoutes);
+
 //onsole.log("serevr");
 // ✅ Default test route
 app.get("/", (req, res) => res.send("Server running OK 🚀"));
