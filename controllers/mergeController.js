@@ -1,56 +1,69 @@
-const mongoose = require("mongoose");
-const Employee = require("../models/Employee");
-const PersonalDetails = require("../models/personalDetails");
-const EducationDetails = require("../models/educationDetails");
-const ProfessionalDetails = require("../models/professionalDetails");
+const Personal = require("../models/personalDetails");
+const Education = require("../models/educationDetails");
+const Professional = require("../models/professionalDetails");
+const Merged = require("../models/mergedDetails");
 
-// Define new model for merged collection
-const Merged = mongoose.model("Merged", new mongoose.Schema({}, { strict: false }), "mergedemployees");
-
-// 🧩 Merge all collections into one
-exports.mergeAllCollections = async (req, res) => {
+// 🔁 1️⃣ Merge all collections
+exports.mergeCollections = async (req, res) => {
   try {
-    const collections = [
-      { name: "employees", model: Employee },
-      { name: "personaldetails", model: PersonalDetails },
-      { name: "educationdetails", model: EducationDetails },
-      { name: "professionaldetails", model: ProfessionalDetails },
-    ];
+    const personalData = await Personal.find({});
+    const educationData = await Education.find({});
+    const professionalData = await Professional.find({});
 
-    let totalInserted = 0;
+    const mergedMap = new Map();
 
-    for (const { name, model } of collections) {
-      console.log(`📦 Fetching from ${name}...`);
-      const docs = await model.find({});
+    for (const p of personalData)
+      mergedMap.set(p.employeeId, { employeeId: p.employeeId, personalDetails: p.toObject() });
 
-      if (docs.length === 0) {
-        console.log(`⚠️ No records found in ${name}`);
-        continue;
-      }
-
-      // Remove duplicate _id and add label
-      const cleanedDocs = docs.map((d) => {
-        const obj = d.toObject();
-        delete obj._id;
-        obj.sourceCollection = name;
-        return obj;
-      });
-
-      await Merged.insertMany(cleanedDocs);
-      console.log(`✅ Inserted ${cleanedDocs.length} from ${name}`);
-      totalInserted += cleanedDocs.length;
+    for (const e of educationData) {
+      const existing = mergedMap.get(e.employeeId) || { employeeId: e.employeeId };
+      existing.educationDetails = e.toObject();
+      mergedMap.set(e.employeeId, existing);
     }
 
-    console.log(`🎉 Merge complete — Total ${totalInserted} documents inserted!`);
+    for (const pr of professionalData) {
+      const existing = mergedMap.get(pr.employeeId) || { employeeId: pr.employeeId };
+      existing.professionalDetails = pr.toObject();
+      mergedMap.set(pr.employeeId, existing);
+    }
+
+    const mergedArray = Array.from(mergedMap.values());
+    await Merged.deleteMany({});
+    await Merged.insertMany(mergedArray);
+
     res.status(200).json({
-      msg: "All collections merged successfully",
-      inserted: totalInserted,
+      success: true,
+      message: `Merged ${mergedArray.length} employees successfully.`,
+      count: mergedArray.length,
     });
-  } catch (error) {
-    console.error("❌ Error merging:", error);
-    res.status(500).json({
-      msg: "Error merging collections",
-      error: error.message,
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// 👤 2️⃣ Get full details of one employee
+exports.getFullDetailsByEmployeeId = async (req, res) => {
+  try {
+    const { empId } = req.params;
+    const emp = await Merged.findOne({ employeeId: empId });
+    if (!emp)
+      return res.status(404).json({ success: false, message: "Employee not found" });
+    res.status(200).json({ success: true, data: emp });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// 👥 3️⃣ Get all merged employees
+exports.getAllMergedEmployees = async (req, res) => {
+  try {
+    const employees = await Merged.find({});
+    res.status(200).json({
+      success: true,
+      count: employees.length,
+      data: employees,
     });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };

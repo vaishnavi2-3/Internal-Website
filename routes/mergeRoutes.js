@@ -1,8 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const { mergeAllCollections } = require("../controllers/mergeController");
+const { mergeCollections, getFullDetailsByEmployeeId, getAllMergedEmployees } = require("../controllers/mergeController");
 
-// GET or POST route to trigger merge
-router.get("/merge", mergeAllCollections);
+// POST → merge all collections
+router.post("/merge", mergeCollections);
+
+// GET → get all merged employee details
+router.get("/employees", getAllMergedEmployees);
+
+// GET → get one employee by ID
+router.get("/employee/:empId", getFullDetailsByEmployeeId);
 
 module.exports = router;

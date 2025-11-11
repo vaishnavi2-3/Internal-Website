@@ -1,14 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const {
-  getFullDetailsByEmail,
-  getAllEmployeesFullDetails,
-} = require("../controllers/finalController");
+const { getEmployeeFullDetails } = require("../controllers/finalController");
 
-// ✅ Get one employee by login email
-router.get("/details/:email", getFullDetailsByEmail);
+// Get all employees
+router.get("/details", getEmployeeFullDetails);
 
-// ✅ Get all employees full details
-router.get("/details", getAllEmployeesFullDetails);
+// Get single employee by employeeId
+router.get("/details/:empId", getEmployeeFullDetails);
 
 module.exports = router;
