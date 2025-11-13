@@ -24,18 +24,44 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const { createLeave, updateLeaveStatus,
+
+// Memory storage for Azure uploads
+const upload = multer({ storage: multer.memoryStorage() });
+
+const {
+  createLeave,
   getLeaveSummary,
- } = require("../controllers/leaveController");
+  updateLeaveByEmployeeId,
+  getAllLeaves
+} = require("../controllers/leaveController");
 
-// ✅ Memory storage (Vercel-compatible)
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
+// --------------------------------------------------------
+// APPLY LEAVE  (POST)
+// --------------------------------------------------------
+router.post(
+  "/apply",
+  upload.single("file"),   // optional file upload
+  createLeave
+);
 
-// ✅ Routes
-router.post("/create", upload.single("file"), createLeave);
-router.put("/:leaveId/status", updateLeaveStatus);
-router.get("/summary/:employeeId", getLeaveSummary);
+// --------------------------------------------------------
+// LEAVE SUMMARY  (GET)
+// :employeeId = EMP101, EMP009, etc.
+// --------------------------------------------------------
+router.get(
+  "/summary/:employeeId",
+  getLeaveSummary
+);
 
+// --------------------------------------------------------
+// UPDATE LEAVE BY EMPLOYEE ID (PUT)
+// :employeeId = EMP101
+//---------------------------------------------------------
+router.put(
+  "/update/:employeeId",
+  upload.single("file"),    // update file optionally
+  updateLeaveByEmployeeId
+);
+router.get("/all", getAllLeaves);
 
 module.exports = router;
