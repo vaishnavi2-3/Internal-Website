@@ -36,7 +36,8 @@ const {
   getAllLeaves,
    getLatestLeaveStatusByEmployeeId,
   getLeavesByStatus,
-  approveLeaveByEmployeeIdAndDate
+  approveLeaveByEmployeeIdAndDate,
+  getLeavesByEmployeeId
 
 } = require("../controllers/leaveController");
 
@@ -71,6 +72,8 @@ router.get("/all", getAllLeaves);
 router.get("/employee/:employeeId/latest", getLatestLeaveStatusByEmployeeId);
 router.get("/employee/:employeeId/filter", getLeavesByStatus);
 router.put("/approve/:employeeId/:date", approveLeaveByEmployeeIdAndDate);
+router.get("/:employeeId", getLeavesByEmployeeId);
+
 
 
 module.exports = router;

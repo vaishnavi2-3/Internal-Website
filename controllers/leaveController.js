@@ -453,3 +453,25 @@ exports.approveLeaveByEmployeeIdAndDate = async (req, res) => {
   }
 };
 
+exports.getLeavesByEmployeeId = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    const leaves = await Leave.find({ employeeId });
+
+    if (!leaves || leaves.length === 0) {
+      return res.status(404).json({ msg: "No leaves found for this employee." });
+    }
+
+    return res.status(200).json({
+      msg: "Leaves fetched successfully.",
+      total: leaves.length,
+      data: leaves
+    });
+
+  } catch (error) {
+    console.error("Error fetching leaves:", error);
+    return res.status(500).json({ msg: "Server error", error });
+  }
+};
+
