@@ -47,31 +47,73 @@
 // router.get("/final-review", taskCtrl.getFinalReview); // ?fy=&employeeId=
 
 // module.exports = router;
+// const express = require("express");
+// const router = express.Router();
+// const taskCtrl = require("../controllers/taskController");
+
+// // ----------------------
+// // ✅ TASKS CRUD
+// // ----------------------
+// router.post("/", taskCtrl.createTask); // Create new task
+// router.get("/", taskCtrl.getTasksByFY); // Get all tasks or filtered by ?fy=&employeeId=
+// router.get("/:employeeId", taskCtrl.getTasksByFY); // ✅ Get tasks for specific employee + ?fy=
+// router.put("/:id", taskCtrl.updateTask); // Update text/due date
+// router.delete("/:id", taskCtrl.deleteTask); // Soft delete (archive)
+
+// // ----------------------
+// // ✅ RATINGS & COMMENTS
+// // ----------------------
+// router.put("/:id/rating", taskCtrl.setRating); // Set task rating
+// router.post("/:id/comments", taskCtrl.addComment); // Add comment
+// router.put("/:id/comments", taskCtrl.editComment); // Edit comment
+// router.delete("/:id/comments", taskCtrl.deleteComment); // Delete comment
+
+// // ----------------------
+// // ✅ FINAL REVIEW
+// // ----------------------
+// router.post("/final-review", taskCtrl.upsertFinalReview); // Create/update final review
+// router.get("/final-review", taskCtrl.getFinalReview); // Get final review by ?fy=&employeeId=
+
+// module.exports = router;
+
 const express = require("express");
 const router = express.Router();
 const taskCtrl = require("../controllers/taskController");
 
-// ----------------------
-// ✅ TASKS CRUD
-// ----------------------
-router.post("/", taskCtrl.createTask); // Create new task
-router.get("/", taskCtrl.getTasksByFY); // Get all tasks or filtered by ?fy=&employeeId=
-router.get("/:employeeId", taskCtrl.getTasksByFY); // ✅ Get tasks for specific employee + ?fy=
-router.put("/:id", taskCtrl.updateTask); // Update text/due date
-router.delete("/:id", taskCtrl.deleteTask); // Soft delete (archive)
+// ------------------------------------------------
+// DEBUG — to see which route is matched
+// ------------------------------------------------
+router.use((req, res, next) => {
+  console.log("🔥 Route hit:", req.method, req.originalUrl);
+  next();
+});
 
-// ----------------------
-// ✅ RATINGS & COMMENTS
-// ----------------------
-router.put("/:id/rating", taskCtrl.setRating); // Set task rating
-router.post("/:id/comments", taskCtrl.addComment); // Add comment
-router.put("/:id/comments", taskCtrl.editComment); // Edit comment
-router.delete("/:id/comments", taskCtrl.deleteComment); // Delete comment
+// ------------------------------------------------
+// FINAL REVIEW ROUTES (MUST BE FIRST)
+// ------------------------------------------------
+router.post("/final-review", taskCtrl.upsertFinalReview);
+router.get("/final-review", taskCtrl.getFinalReview);
 
-// ----------------------
-// ✅ FINAL REVIEW
-// ----------------------
-router.post("/final-review", taskCtrl.upsertFinalReview); // Create/update final review
-router.get("/final-review", taskCtrl.getFinalReview); // Get final review by ?fy=&employeeId=
+// ------------------------------------------------
+// TASK CRUD
+// ------------------------------------------------
+router.post("/", taskCtrl.createTask);
+router.get("/", taskCtrl.getTasksByFY);
+
+// ------------------------------------------------
+// DYNAMIC ROUTE (KEEP AT BOTTOM)
+// ------------------------------------------------
+router.get("/:employeeId", taskCtrl.getTasksByFY);
+
+router.put("/:id", taskCtrl.updateTask);
+router.delete("/:id", taskCtrl.deleteTask);
+
+// ------------------------------------------------
+// COMMENTS & RATINGS
+// ------------------------------------------------
+router.put("/:id/rating", taskCtrl.setRating);
+router.post("/:id/comments", taskCtrl.addComment);
+router.put("/:id/comments", taskCtrl.editComment);
+router.delete("/:id/comments", taskCtrl.deleteComment);
 
 module.exports = router;
