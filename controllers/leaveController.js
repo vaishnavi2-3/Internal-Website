@@ -474,4 +474,30 @@ exports.getLeavesByEmployeeId = async (req, res) => {
     return res.status(500).json({ msg: "Server error", error });
   }
 };
+exports.previewLeaveFile = async (req, res) => {
+  try {
+    const { leaveId } = req.params;
+
+    const leave = await Leave.findById(leaveId);
+    if (!leave || !leave.file) {
+      return res.status(404).json({ msg: "File not found" });
+    }
+
+    const fileUrl = leave.file.path;
+
+    // fetch file from Azure Blob
+    const response = await fetch(fileUrl);
+    const fileBuffer = Buffer.from(await response.arrayBuffer());
+
+    // 🔥 IMPORTANT — show in browser (NOT download)
+    res.setHeader("Content-Type", leave.file.mimetype);
+    res.setHeader("Content-Disposition", "inline");
+
+    return res.send(fileBuffer);
+
+  } catch (error) {
+    console.error("Error loading file:", error);
+    res.status(500).json({ msg: "Server Error", error: error.message });
+  }
+};
 

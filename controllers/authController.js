@@ -3,10 +3,13 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const sendEmail = require("../utils/sendEmail");
+const PersonalDetails = require("../models/personalDetails");
+const Education = require("../models/educationDetails");
+const ProfessionalDetails = require("../models/professionalDetails");
 
 
 
-// 🧩 Login Employee
+
 
 // 🔐 Login Employee
 exports.loginEmployee = async (req, res) => {
@@ -23,16 +26,43 @@ exports.loginEmployee = async (req, res) => {
       return res.status(401).json({ msg: "Invalid email or password" });
     }
 
-    // ✅ Generate JWT Token
+    // 🔐 Generate JWT
     const token = jwt.sign(
       { email: employee.email, employeeId: employee.employeeId, role: employee.role },
       process.env.JWT_SECRET || "supersecretkey",
       { expiresIn: "1d" }
     );
 
+    // ✅ Check Personal Details
+    const personalDetails = await PersonalDetails.findOne({
+      officialEmail: employee.email,
+    });
+
+    // ✅ Check Education Details
+    const educationDetails = await Education.findOne({
+      officialEmail: employee.email,
+    });
+
+    // ✅ Check Professional Details
+    const professionalDetails = await ProfessionalDetails.findOne({
+      officialEmail: employee.email,
+    });
+
+    // ---------------------------
+    // 🔥 Flags to show in frontend
+    // ---------------------------
+    const mustFillPersonal = !personalDetails;
+    const mustFillEducation = !educationDetails;
+    const mustFillProfessional = !professionalDetails;
+
     res.status(200).json({
-      msg: "✅ Login successful",
+      msg: "Login successful",
       token,
+
+      mustFillPersonalDetails: mustFillPersonal,
+      mustFillEducationDetails: mustFillEducation,
+      mustFillProfessionalDetails: mustFillProfessional,
+
       employee: {
         email: employee.email,
         employeeId: employee.employeeId,
@@ -41,8 +71,9 @@ exports.loginEmployee = async (req, res) => {
         role: employee.role,
       },
     });
+
   } catch (err) {
-    console.error("❌ Login error:", err);
+    console.error("Login error:", err);
     res.status(500).json({ msg: "Server Error", error: err.message });
   }
 };

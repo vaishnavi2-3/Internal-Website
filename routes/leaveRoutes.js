@@ -1,26 +1,3 @@
-// const express = require("express");
-// const router = express.Router();
-// const multer = require("multer");
-// const path = require("path");
-// const { createLeave, getLeaves } = require("../controllers/leaveController");
-
-// // ✅ Multer config (temporary local save before uploading to Azure)
-// const storage = multer.diskStorage({
-//   destination: (req, file, cb) => {
-//     cb(null, "uploads/leaves/");
-//   },
-//   filename: (req, file, cb) => {
-//     cb(null, Date.now() + "-" + file.originalname);
-//   },
-// });
-
-// const upload = multer({ storage });
-
-// // ✅ Routes
-// router.post("/create", upload.single("file"), createLeave);
-// router.get("/", getLeaves);
-
-// module.exports = router;
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
@@ -37,7 +14,8 @@ const {
    getLatestLeaveStatusByEmployeeId,
   getLeavesByStatus,
   approveLeaveByEmployeeIdAndDate,
-  getLeavesByEmployeeId
+  getLeavesByEmployeeId,
+  previewLeaveFile
 
 } = require("../controllers/leaveController");
 
@@ -73,6 +51,8 @@ router.get("/employee/:employeeId/latest", getLatestLeaveStatusByEmployeeId);
 router.get("/employee/:employeeId/filter", getLeavesByStatus);
 router.put("/approve/:employeeId/:date", approveLeaveByEmployeeIdAndDate);
 router.get("/:employeeId", getLeavesByEmployeeId);
+router.get("/file/:leaveId", previewLeaveFile);
+
 
 
 

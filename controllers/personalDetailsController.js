@@ -1,7 +1,7 @@
 // const PersonalDetails = require("../models/personalDetails");
 // const { blobServiceClient, containerName } = require("../config/azureBlob");
 
-// // 🔹 Upload file buffer to Azure
+// // Upload to Azure
 // async function uploadToAzure(fileBuffer, originalname, mimetype) {
 //   try {
 //     if (!fileBuffer) return null;
@@ -28,24 +28,29 @@
 //   }
 // }
 
+// // 🌟 Save/Update personal details (email only)
 // exports.savePersonalDetails = async (req, res) => {
 //   try {
+//     const emailFromToken = req.user.email; // 👈 ONLY email used
 //     const body = req.body;
 
-//     // ✅ Convert isMarried properly (form-data sends strings)
+//     // Force email into body
+// body.officialEmail = emailFromToken;  // login email
+// // body.email remains personal email (coming from request body)
+
+//     // Convert isMarried
 //     body.isMarried = body.isMarried === "true" || body.isMarried === true;
 
-//     // ✅ FIX: Remove invalid empty marriage certificate value
+//     // Marriage Certificate validation
 //     if (!body.isMarried) {
 //       delete body.marriageCertificate;
 //     } else {
 //       if (!req.files?.marriageCertificate) {
 //         return res.status(400).json({
-//           msg: "Marriage certificate is required because employee is married",
+//           msg: "Marriage certificate required because employee is married",
 //         });
 //       }
 //     }
-    
 
 //     const getFileObj = async (field) => {
 //       if (!req.files?.[field]) return null;
@@ -60,14 +65,14 @@
 
 //     const data = {
 //       ...body,
-//       ...(photoFile && { photo: photoFile.path }), // photo stored as String
+//       ...(photoFile && { photo: photoFile.path }),
 //       ...(aadharFile && { aadharUpload: aadharFile }),
 //       ...(panFile && { panUpload: panFile }),
 //       ...(marriageFile && { marriageCertificate: marriageFile }),
 //     };
 
 //     const updated = await PersonalDetails.findOneAndUpdate(
-//       { email: body.email },
+//       { email: emailFromToken }, // 👈 Search only by email
 //       data,
 //       { new: true, upsert: true }
 //     );
@@ -76,19 +81,41 @@
 //       msg: "✅ Personal details saved successfully",
 //       data: updated,
 //     });
+
 //   } catch (err) {
 //     console.error("❌ Error saving personal details:", err);
-//     res.status(500).json({
-//       msg: "Server Error",
-//       error: err.message,
-//     });
+//     res.status(500).json({ msg: "Server Error", error: err.message });
 //   }
 // };
 
-// // 🟢 Fetch all records
+// // 🌟 Get logged-in employee personal details
+// exports.getMyPersonalDetails = async (req, res) => {
+//   try {
+//     const officialEmail = req.user.email;  // login token email
+
+//     const record = await PersonalDetails.findOne({ email: emailFromToken });
+
+//     if (!record) {
+//       return res.status(404).json({ msg: "No personal details found" });
+//     }
+
+//     res.status(200).json({
+//       msg: "Personal details fetched successfully",
+//       data: record,
+//     });
+
+//   } catch (err) {
+//     res.status(500).json({ msg: "Server Error", error: err.message });
+//   }
+// };
 // exports.getAllPersonalDetails = async (req, res) => {
 //   try {
-//     const allDetails = await PersonalDetails.find();
+//     // OPTIONAL: only allow admins - adjust depending on your Employee model
+//     if (!req.user?.isAdmin) {
+//       return res.status(403).json({ msg: "Forbidden: admin access required" });
+//     }
+
+//     const allDetails = await PersonalDetails.find().sort({ createdAt: -1 });
 //     res.status(200).json({
 //       msg: "✅ All personal details fetched successfully",
 //       count: allDetails.length,
@@ -99,24 +126,21 @@
 //     res.status(500).json({ msg: "Server Error", error: err.message });
 //   }
 // };
-
-// // 🟢 Fetch single record by email
-// exports.getPersonalDetails = async (req, res) => {
+// exports.getPersonalDetailsByEmail = async (req, res) => {
 //   try {
 //     const { email } = req.params;
-//     const record = await PersonalDetails.findOne({ email });
-//     console.log("personal")
+
+//     const record = await PersonalDetails.findOne({ officialEmail: email });
 
 //     if (!record) {
-//       return res.status(404).json({ msg: "❌ Personal details not found" });
+//       return res.status(404).json({ msg: "Personal details not found" });
 //     }
 
 //     res.status(200).json({
-//       msg: "✅ Personal details fetched successfully",
+//       msg: "Personal details fetched successfully",
 //       data: record,
 //     });
 //   } catch (err) {
-//     console.error("❌ Error fetching personal details:", err);
 //     res.status(500).json({ msg: "Server Error", error: err.message });
 //   }
 // };
@@ -150,30 +174,32 @@ async function uploadToAzure(fileBuffer, originalname, mimetype) {
   }
 }
 
-// 🌟 Save/Update personal details (email only)
+// 🌟 Save / Update Personal Details
 exports.savePersonalDetails = async (req, res) => {
   try {
-    const emailFromToken = req.user.email; // 👈 ONLY email used
+    const emailFromToken = req.user.email;
     const body = req.body;
 
-    // Force email into body
-body.officialEmail = emailFromToken;  // login email
-// body.email remains personal email (coming from request body)
+    // Store official email
+    body.officialEmail = emailFromToken;
 
-    // Convert isMarried
-    body.isMarried = body.isMarried === "true" || body.isMarried === true;
+    // Convert isMarried to boolean
+    body.isMarried =
+      body.isMarried === "true" || body.isMarried === true ? true : false;
 
-    // Marriage Certificate validation
-    if (!body.isMarried) {
-      delete body.marriageCertificate;
-    } else {
-      if (!req.files?.marriageCertificate) {
-        return res.status(400).json({
-          msg: "Marriage certificate required because employee is married",
-        });
+    // Marriage certificate OPTIONAL
+    let marriageFile = null;
+
+    if (body.isMarried) {
+      if (req.files?.marriageCertificate) {
+        const f = req.files.marriageCertificate[0];
+        marriageFile = await uploadToAzure(f.buffer, f.originalname, f.mimetype);
       }
+    } else {
+      delete body.marriageCertificate;
     }
 
+    // Upload helper
     const getFileObj = async (field) => {
       if (!req.files?.[field]) return null;
       const f = req.files[field][0];
@@ -183,7 +209,6 @@ body.officialEmail = emailFromToken;  // login email
     const photoFile = await getFileObj("photo");
     const aadharFile = await getFileObj("aadharUpload");
     const panFile = await getFileObj("panUpload");
-    const marriageFile = await getFileObj("marriageCertificate");
 
     const data = {
       ...body,
@@ -193,8 +218,9 @@ body.officialEmail = emailFromToken;  // login email
       ...(marriageFile && { marriageCertificate: marriageFile }),
     };
 
+    // ❗ Correct search field = officialEmail
     const updated = await PersonalDetails.findOneAndUpdate(
-      { email: emailFromToken }, // 👈 Search only by email
+      { officialEmail: emailFromToken },
       data,
       { new: true, upsert: true }
     );
@@ -213,9 +239,11 @@ body.officialEmail = emailFromToken;  // login email
 // 🌟 Get logged-in employee personal details
 exports.getMyPersonalDetails = async (req, res) => {
   try {
-    const officialEmail = req.user.email;  // login token email
+    const emailFromToken = req.user.email;
 
-    const record = await PersonalDetails.findOne({ email: emailFromToken });
+    const record = await PersonalDetails.findOne({
+      officialEmail: emailFromToken,
+    });
 
     if (!record) {
       return res.status(404).json({ msg: "No personal details found" });
@@ -230,14 +258,16 @@ exports.getMyPersonalDetails = async (req, res) => {
     res.status(500).json({ msg: "Server Error", error: err.message });
   }
 };
+
+// 🌟 Admin: Get All Personal Details
 exports.getAllPersonalDetails = async (req, res) => {
   try {
-    // OPTIONAL: only allow admins - adjust depending on your Employee model
     if (!req.user?.isAdmin) {
       return res.status(403).json({ msg: "Forbidden: admin access required" });
     }
 
     const allDetails = await PersonalDetails.find().sort({ createdAt: -1 });
+
     res.status(200).json({
       msg: "✅ All personal details fetched successfully",
       count: allDetails.length,
@@ -248,11 +278,15 @@ exports.getAllPersonalDetails = async (req, res) => {
     res.status(500).json({ msg: "Server Error", error: err.message });
   }
 };
+
+// 🌟 Fetch personal details by email
 exports.getPersonalDetailsByEmail = async (req, res) => {
   try {
     const { email } = req.params;
 
-    const record = await PersonalDetails.findOne({ officialEmail: email });
+    const record = await PersonalDetails.findOne({
+      officialEmail: email,
+    });
 
     if (!record) {
       return res.status(404).json({ msg: "Personal details not found" });
@@ -262,6 +296,7 @@ exports.getPersonalDetailsByEmail = async (req, res) => {
       msg: "Personal details fetched successfully",
       data: record,
     });
+
   } catch (err) {
     res.status(500).json({ msg: "Server Error", error: err.message });
   }
