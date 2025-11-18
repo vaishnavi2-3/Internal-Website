@@ -13,15 +13,15 @@ const FinalReviewSchema = new mongoose.Schema(
     disagree: { type: Boolean, default: false },
     finalizedOn: { type: Date }, // when finalized by employee (or manager)
     managerFinalizedOn: { type: Date }, // when manager finalized (optional)
-    // keep a history if you want:
-    history: [
-      {
-        by: { type: String }, // "Manager" or "Employee"
-        action: { type: String },
-        payload: { type: mongoose.Schema.Types.Mixed },
-        at: { type: Date, default: Date.now },
-      },
-    ],
+    // // keep a history if you want:
+    // history: [
+    //   {
+    //     by: { type: String }, // "Manager" or "Employee"
+    //     action: { type: String },
+    //     payload: { type: mongoose.Schema.Types.Mixed },
+    //     at: { type: Date, default: Date.now },
+    //   },
+    // ],
   },
   { timestamps: true }
 );
