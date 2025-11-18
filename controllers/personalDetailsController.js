@@ -187,13 +187,29 @@ exports.savePersonalDetails = async (req, res) => {
     body.isMarried =
       body.isMarried === "true" || body.isMarried === true ? true : false;
 
-    // Marriage certificate OPTIONAL
+    // Convert children array
+    if (body.children) {
+      try {
+        body.children =
+          typeof body.children === "string"
+            ? JSON.parse(body.children)
+            : body.children;
+      } catch (err) {
+        body.children = [];
+      }
+    }
+
+    // Marriage certificate optional
     let marriageFile = null;
 
     if (body.isMarried) {
       if (req.files?.marriageCertificate) {
         const f = req.files.marriageCertificate[0];
-        marriageFile = await uploadToAzure(f.buffer, f.originalname, f.mimetype);
+        marriageFile = await uploadToAzure(
+          f.buffer,
+          f.originalname,
+          f.mimetype
+        );
       }
     } else {
       delete body.marriageCertificate;
@@ -218,7 +234,6 @@ exports.savePersonalDetails = async (req, res) => {
       ...(marriageFile && { marriageCertificate: marriageFile }),
     };
 
-    // ❗ Correct search field = officialEmail
     const updated = await PersonalDetails.findOneAndUpdate(
       { officialEmail: emailFromToken },
       data,
@@ -229,7 +244,6 @@ exports.savePersonalDetails = async (req, res) => {
       msg: "✅ Personal details saved successfully",
       data: updated,
     });
-
   } catch (err) {
     console.error("❌ Error saving personal details:", err);
     res.status(500).json({ msg: "Server Error", error: err.message });
@@ -253,7 +267,6 @@ exports.getMyPersonalDetails = async (req, res) => {
       msg: "Personal details fetched successfully",
       data: record,
     });
-
   } catch (err) {
     res.status(500).json({ msg: "Server Error", error: err.message });
   }
@@ -274,7 +287,6 @@ exports.getAllPersonalDetails = async (req, res) => {
       data: allDetails,
     });
   } catch (err) {
-    console.error("❌ Error fetching all personal details:", err);
     res.status(500).json({ msg: "Server Error", error: err.message });
   }
 };
@@ -296,7 +308,6 @@ exports.getPersonalDetailsByEmail = async (req, res) => {
       msg: "Personal details fetched successfully",
       data: record,
     });
-
   } catch (err) {
     res.status(500).json({ msg: "Server Error", error: err.message });
   }

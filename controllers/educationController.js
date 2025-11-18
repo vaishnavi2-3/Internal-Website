@@ -35,9 +35,9 @@ const saveEducationDetails = async (req, res) => {
     // Attach official email
     body.officialEmail = officialEmail;
 
-    // Convert hasMTech to boolean
-    body.hasMTech =
-      body.hasMTech === "true" || body.hasMTech === true ? true : false;
+    // Convert booleans
+    body.hasMTech = body.hasMTech === "true" || body.hasMTech === true;
+    body.hasCourse = body.hasCourse === "true" || body.hasCourse === true;
 
     // Upload helper
     const getFileObj = async (field) => {
@@ -52,23 +52,35 @@ const saveEducationDetails = async (req, res) => {
     const certificateUG = await getFileObj("certificateUG");
 
     // -------------------------
-    // 🌟 MTECH VALIDATION LOGIC
+    // 🌟 MTECH LOGIC
     // -------------------------
     let certificateMTech = null;
 
     if (body.hasMTech === true) {
-      // user marked checkbox
-      if (!req.files?.certificateMTech) {
-        return res.status(400).json({
-          msg: "MTech certificate is required because hasMTech = true",
-        });
+      if (req.files?.certificateMTech) {
+        certificateMTech = await getFileObj("certificateMTech");
       }
-      certificateMTech = await getFileObj("certificateMTech");
     } else {
-      // user does not have MTech → remove fields
       delete body.collegeNameMTech;
       delete body.yearMTech;
       delete body.cgpaMTech;
+    }
+
+    // -------------------------
+    // 🌟 COURSE LOGIC (NEW)
+    // -------------------------
+    let certificateCourse = null;
+
+    if (body.hasCourse === true) {
+      if (req.files?.certificateCourse) {
+        certificateCourse = await getFileObj("certificateCourse");
+      }
+    } else {
+      delete body.courseName;
+      delete body.instituteName;
+      delete body.courseDuration;
+      delete body.cgpaCourse;
+      delete body.yearCourse;
     }
 
     const educationData = {
@@ -77,6 +89,7 @@ const saveEducationDetails = async (req, res) => {
       ...(certificate12 && { certificate12 }),
       ...(certificateUG && { certificateUG }),
       ...(certificateMTech && { certificateMTech }),
+      ...(certificateCourse && { certificateCourse }), // NEW
     };
 
     // Upsert

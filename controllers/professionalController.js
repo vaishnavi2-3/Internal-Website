@@ -156,32 +156,34 @@ async function uploadToAzure(file) {
 }
 
 // -----------------------------------------------------
-// SAVE / UPDATE Professional Details (linked by email)
+// SAVE / UPDATE Professional Details
 // -----------------------------------------------------
 exports.saveProfessionalDetails = async (req, res) => {
   try {
-    const officialEmail = req.user.email; // 👈 login token email
+    const officialEmail = req.user.email;
     const body = req.body;
 
     body.officialEmail = officialEmail;
 
+    // Convert experiences (array)
     let experiences = [];
     if (body.experiences) {
-      experiences =
-        typeof body.experiences === "string"
-          ? JSON.parse(body.experiences)
-          : body.experiences;
+      experiences = typeof body.experiences === "string"
+        ? JSON.parse(body.experiences)
+        : body.experiences;
     }
 
     // Upload files for each experience
     for (let i = 0; i < experiences.length; i++) {
       const exp = experiences[i];
 
+      // Relieving letter
       const relFile = req.files?.find(
         (f) => f.fieldname === `experiences[${i}][relivingLetter]`
       );
       exp.relivingLetter = relFile ? await uploadToAzure(relFile) : null;
 
+      // Salary slips
       const slipFiles =
         req.files?.filter(
           (f) => f.fieldname === `experiences[${i}][salarySlips]`
@@ -194,12 +196,12 @@ exports.saveProfessionalDetails = async (req, res) => {
       }
     }
 
+    // Save / Update
     const updated = await ProfessionalDetails.findOneAndUpdate(
-      { officialEmail },  // 👈 update using token email
+      { officialEmail },
       {
         officialEmail,
-        employeeId: body.employeeId,        // 👈 NEW FIELD ADDED
-
+        employeeId: body.employeeId,
         dateOfJoining: body.dateOfJoining,
         role: body.role,
         department: body.department,
