@@ -29,15 +29,27 @@ async function uploadToAzure(fileBuffer, originalname, mimetype) {
 // -------------------------
 const saveEducationDetails = async (req, res) => {
   try {
-    const officialEmail = req.user.email; 
+    const officialEmail = req.user.email;
     const body = req.body;
 
-    // Attach official email
     body.officialEmail = officialEmail;
 
     // Convert booleans
     body.hasMTech = body.hasMTech === "true" || body.hasMTech === true;
     body.hasCourse = body.hasCourse === "true" || body.hasCourse === true;
+
+    // 🔥 FIX: remove empty string values for sub-doc fields
+    const cleanEmpty = (field) => {
+      if (body[field] === "" || body[field] === "null" || body[field] === undefined) {
+        delete body[field];
+      }
+    };
+
+    cleanEmpty("certificateMTech");
+    cleanEmpty("certificateCourse");
+    cleanEmpty("certificateUG");
+    cleanEmpty("certificate12");
+    cleanEmpty("certificate10");
 
     // Upload helper
     const getFileObj = async (field) => {
@@ -46,17 +58,17 @@ const saveEducationDetails = async (req, res) => {
       return await uploadToAzure(f.buffer, f.originalname, f.mimetype);
     };
 
-    // Required certificates
+    // Upload certificates
     const certificate10 = await getFileObj("certificate10");
     const certificate12 = await getFileObj("certificate12");
     const certificateUG = await getFileObj("certificateUG");
 
     // -------------------------
-    // 🌟 MTECH LOGIC
+    // MTECH LOGIC
     // -------------------------
     let certificateMTech = null;
 
-    if (body.hasMTech === true) {
+    if (body.hasMTech) {
       if (req.files?.certificateMTech) {
         certificateMTech = await getFileObj("certificateMTech");
       }
@@ -64,14 +76,15 @@ const saveEducationDetails = async (req, res) => {
       delete body.collegeNameMTech;
       delete body.yearMTech;
       delete body.cgpaMTech;
+      delete body.certificateMTech;  // ❗ important fix
     }
 
     // -------------------------
-    // 🌟 COURSE LOGIC (NEW)
+    // COURSE LOGIC
     // -------------------------
     let certificateCourse = null;
 
-    if (body.hasCourse === true) {
+    if (body.hasCourse) {
       if (req.files?.certificateCourse) {
         certificateCourse = await getFileObj("certificateCourse");
       }
@@ -81,6 +94,7 @@ const saveEducationDetails = async (req, res) => {
       delete body.courseDuration;
       delete body.cgpaCourse;
       delete body.yearCourse;
+      delete body.certificateCourse;  // ❗ important fix
     }
 
     const educationData = {
@@ -89,10 +103,9 @@ const saveEducationDetails = async (req, res) => {
       ...(certificate12 && { certificate12 }),
       ...(certificateUG && { certificateUG }),
       ...(certificateMTech && { certificateMTech }),
-      ...(certificateCourse && { certificateCourse }), // NEW
+      ...(certificateCourse && { certificateCourse }),
     };
 
-    // Upsert
     const updated = await Education.findOneAndUpdate(
       { officialEmail },
       educationData,

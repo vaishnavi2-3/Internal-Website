@@ -88,8 +88,17 @@ module.exports = function calculateLeaves(joiningDate, used) {
     const monthKey = start.toISOString().substring(0, 7); // yyyy-mm
 
     // Each month earns:
-    balanceCL += 1; // 1 casual per month
-    balanceSL += 1; // 1 sick per month
+// Earn leaves
+balanceCL += 1;  // Casual always earns 1 per month
+
+// Sick leave carry-forward logic
+if (start.getMonth() === 3) {
+  // New financial year → SL carry forward only
+  balanceSL = balanceSL;  
+} else {
+  // Earn 1 SL per month normally
+  balanceSL += 1; 
+}
 
     // Deduct used leaves
     const usedCL = used.CL[monthKey] || 0;
