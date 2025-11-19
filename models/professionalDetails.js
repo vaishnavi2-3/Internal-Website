@@ -108,6 +108,7 @@ const professionalDetailsSchema = new Schema(
     experiences: { type: [experienceSchema], default: [] },
   },
   { timestamps: true }
+  
 );
 
 module.exports = mongoose.model("ProfessionalDetails", professionalDetailsSchema);

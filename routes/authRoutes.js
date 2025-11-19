@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.post("/register", registerEmployee);
 router.post("/login", loginEmployee);
-router.get("/", getAllEmployees);
+router.get("/all", getAllEmployees);
 router.get("/:id", getEmployeeById);
 router.get("/email/:email", getEmployeeByEmail);
 
