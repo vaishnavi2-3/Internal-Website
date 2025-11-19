@@ -32,7 +32,7 @@ router.post(
 
 router.get("/me", verifyToken, getMyPersonalDetails);
 router.get("/:email", verifyToken, getPersonalDetailsByEmail);
-router.get("/", verifyToken, getAllPersonalDetails);
+router.get("/", getAllPersonalDetails);
 
 
 module.exports = router;

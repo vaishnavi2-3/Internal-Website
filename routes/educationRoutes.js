@@ -49,12 +49,13 @@ const {
 router.post(
   "/save",
   verifyToken,
-  upload.fields([
-    { name: "certificate10", maxCount: 1 },
-    { name: "certificate12", maxCount: 1 },
-    { name: "certificateUG", maxCount: 1 },
-    { name: "certificateMTech", maxCount: 1 },
-  ]),
+upload.fields([
+  { name: "certificate10", maxCount: 1 },
+  { name: "certificate12", maxCount: 1 },
+  { name: "certificateUG", maxCount: 1 },
+  { name: "certificateMTech", maxCount: 1 },
+  { name: "certificateCourse", maxCount: 1 }  // ✅ NEW FIELD
+]),
   saveEducationDetails
 );
 

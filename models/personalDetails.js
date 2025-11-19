@@ -144,12 +144,10 @@ const personalDetailsSchema = new mongoose.Schema(
     isMarried: { type: Boolean, default: false },
     spouse: { type: String },
     children: { type: Array, default: [] },
-    marriageCertificate: {
-      type: fileSub,
-      required: function () {
-        return this.isMarried === true; 
-      },
-    },
+marriageCertificate: {
+  type: fileSub,
+  required: false, // ⚡ always optional
+},
 
     createdAt: { type: Date, default: Date.now },
   },

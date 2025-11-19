@@ -200,20 +200,28 @@ exports.savePersonalDetails = async (req, res) => {
     }
 
     // Marriage certificate optional
-    let marriageFile = null;
+// Marriage certificate optional
+let marriageFile = null;
 
-    if (body.isMarried) {
-      if (req.files?.marriageCertificate) {
-        const f = req.files.marriageCertificate[0];
-        marriageFile = await uploadToAzure(
-          f.buffer,
-          f.originalname,
-          f.mimetype
-        );
-      }
-    } else {
-      delete body.marriageCertificate;
-    }
+// If married and file uploaded → upload
+if (body.isMarried && req.files?.marriageCertificate) {
+  const f = req.files.marriageCertificate[0];
+  marriageFile = await uploadToAzure(
+    f.buffer,
+    f.originalname,
+    f.mimetype
+  );
+}
+
+// If married and NO file → remove empty values
+if (body.isMarried && !req.files?.marriageCertificate) {
+  delete body.marriageCertificate;
+}
+
+// If not married → never store this field
+if (!body.isMarried) {
+  delete body.marriageCertificate;
+}
 
     // Upload helper
     const getFileObj = async (field) => {
