@@ -1,74 +1,33 @@
-// const PersonalDetails = require("../models/personalDetails");
-// const EducationDetails = require("../models/educationDetails");
-// const ProfessionalDetails = require("../models/professionalDetails");
-
-// // ✅ Get all or single employee full details
-// exports.getEmployeeFullDetails = async (req, res) => {
-//   try {
-//     const { empId } = req.params;
-
-//     let query = {};
-//     if (empId) query.employeeId = empId;
-
-//     // 1️⃣ Get professional details
-//     const professionals = await ProfessionalDetails.find(query);
-
-//     if (professionals.length === 0) {
-//       return res.status(404).json({ msg: "No employees found" });
-//     }
-
-//     // 2️⃣ For each professional, find matching personal + education details
-//     const fullDetails = await Promise.all(
-//       professionals.map(async (prof) => {
-//         const personal = await PersonalDetails.findOne({ employeeId: prof.employeeId });
-//         const education = await EducationDetails.findOne({ employeeId: prof.employeeId });
-
-//         return {
-//           employeeId: prof.employeeId,
-//           professional: prof,
-//           personal: personal || {},
-//           education: education || {},
-//         };
-//       })
-//     );
-
-//     res.status(200).json({
-//       count: fullDetails.length,
-//       data: fullDetails,
-//     });
-//   } catch (error) {
-//     console.error("❌ Error fetching employee details:", error);
-//     res.status(500).json({ msg: "Server Error", error: error.message });
-//   }
-// };
 const PersonalDetails = require("../models/personalDetails");
 const Education = require("../models/educationDetails");
 const ProfessionalDetails = require("../models/professionalDetails");
 
 exports.getAllEmployeesFullDetails = async (req, res) => {
   try {
-    // Fetch all personals (base list of employees)
     const personals = await PersonalDetails.find();
 
     if (!personals.length) {
       return res.status(404).json({ msg: "No employees found" });
     }
 
-    const results = [];
+    // Collect all emails
+    const emails = personals.map(p => p.officialEmail);
 
-    for (const person of personals) {
-      const officialEmail = person.officialEmail;
+    // Fetch all in one go (NOT inside loop)
+    const educationList = await Education.find({ officialEmail: { $in: emails } });
+    const professionalList = await ProfessionalDetails.find({ officialEmail: { $in: emails } });
 
-      const education = await Education.findOne({ officialEmail });
-      const professional = await ProfessionalDetails.findOne({ officialEmail });
+    // Convert lists to map for O(1) lookup
+    const educationMap = new Map(educationList.map(ed => [ed.officialEmail, ed]));
+    const professionalMap = new Map(professionalList.map(pd => [pd.officialEmail, pd]));
 
-      results.push({
-        officialEmail,
-        personal: person,
-        education,
-        professional,
-      });
-    }
+    // Merge results
+    const results = personals.map(person => ({
+      officialEmail: person.officialEmail,
+      personal: person,
+      education: educationMap.get(person.officialEmail) || null,
+      professional: professionalMap.get(person.officialEmail) || null,
+    }));
 
     res.status(200).json({
       msg: "All employees full details fetched successfully",
