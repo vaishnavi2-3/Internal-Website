@@ -111,13 +111,19 @@ const personalDetailsSchema = new mongoose.Schema(
     photo: { type: String, required: true },
 
     // --- Address Info ---
-    currentAddress: { type: String, required: true },
-    sameAddress: { type: Boolean, default: false },
-    permanentAddress: { type: String, required: true },
-    landmark: { type: String, required: true },
-    pincode: { type: String, required: true },
-    village: { type: String },
-    state: { type: String, required: true },
+currentAddress: { type: String, required: true },
+landmarkCurrent: { type: String, required: true },
+pincodeCurrent: { type: String, required: true },
+villageCurrent: { type: String },
+stateCurrent: { type: String, required: true },
+
+permanentAddress: { type: String, required: true },
+landmarkPermanent: { type: String, required: true },
+pincodePermanent: { type: String, required: true },
+villagePermanent: { type: String },
+statePermanent: { type: String, required: true },
+
+sameAddress: { type: Boolean, default: false },
 
     // --- Emergency Info ---
     emergencyNumber: { type: String, required: true },

@@ -186,6 +186,14 @@ exports.savePersonalDetails = async (req, res) => {
     // Convert isMarried to boolean
     body.isMarried =
       body.isMarried === "true" || body.isMarried === true ? true : false;
+          if (body.sameAddress === "true" || body.sameAddress === true) {
+      body.permanentAddress = body.currentAddress;
+      body.landmarkPermanent = body.landmarkCurrent;
+      body.pincodePermanent = body.pincodeCurrent;
+      body.villagePermanent = body.villageCurrent;
+      body.statePermanent = body.stateCurrent;
+    }
+
 
     // Convert children array
     if (body.children) {
