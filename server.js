@@ -6,6 +6,7 @@ const path=require('path');
 const fs=require('fs');
 const { BlobServiceClient } = require("@azure/storage-blob");
 const cron = require("node-cron");
+const { setupSwagger } = require("./config/swagger"); // adjust path if needed
 
 // 🕒 Run every minute
 // cron.schedule("* * * * *", () => {

@@ -53,7 +53,10 @@ exports.registerEmployee = async (req, res) => {
 exports.getAllEmployees = async (req, res) => {
   try {
     const employees = await Employee.find().select("-password"); // hide password
-    res.status(200).json({ msg: "Employees fetched successfully", employees });
+    res.status(200).json({ msg: "Employees fetched successfully",  count: employees.length,
+ employees });
+    
+
   } catch (err) {
     console.error("❌ Error fetching employees:", err);
     res.status(500).json({ msg: "Server Error", error: err.message });

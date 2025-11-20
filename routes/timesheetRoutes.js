@@ -30,7 +30,8 @@ const { verifyToken } = require("../middleware/authMiddleware");
 router.post("/create", verifyToken, createTimeEntry);
 
 // ✅ Get logged-in employee’s timesheet entries
-router.get("/", getMyTimeEntries);
+router.put("/update", verifyToken, updateTimeEntryByEmail);
+router.get("/",verifyToken, getMyTimeEntries);
 router.put("/update", verifyToken, updateTimeEntryByEmail);
 
 // 🔧 Update PARTIAL entry (PATCH)
