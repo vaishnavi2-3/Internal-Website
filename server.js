@@ -65,6 +65,7 @@ app.use("/api", mergeRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/trainings", trainingRoutes);
 app.use("/api/certifications", certificationRoutes);
+app.use("/api/hrleaves", require("./routes/HrLeavesRoutes"));
 
 
 //console.log("serevr");
