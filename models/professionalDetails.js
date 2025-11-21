@@ -110,5 +110,6 @@ const professionalDetailsSchema = new Schema(
   { timestamps: true }
   
 );
+professionalDetailsSchema.index({ officialEmail: 1 });
 
 module.exports = mongoose.model("ProfessionalDetails", professionalDetailsSchema);
