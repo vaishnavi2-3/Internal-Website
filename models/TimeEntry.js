@@ -2,13 +2,17 @@ const mongoose = require("mongoose");
 
 const timeEntrySchema = new mongoose.Schema(
   {
-    employeeEmail: {
+    officialEmail: {     // 🔥 UPDATED
       type: String,
       required: true,
       trim: true,
       lowercase: true,
     },
-    date: { type: Date, required: true },
+    date: { 
+      type: Date, 
+      required: true,
+      set: (v) => new Date(v)
+    },
     category: { type: String, required: true },
     projectName: { type: String, required: true },
     projectCode: { type: String, required: true },

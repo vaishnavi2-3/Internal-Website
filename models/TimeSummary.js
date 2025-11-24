@@ -7,7 +7,7 @@ const daySchema = new mongoose.Schema({
 
 const timeSummarySchema = new mongoose.Schema(
   {
-    employeeEmail: { type: String, required: true },
+    officialEmail: { type: String, required: true },   // 🔥 UPDATED
 
     month: { type: Number, required: true },   // 1–12
     year: { type: Number, required: true },
@@ -24,7 +24,7 @@ const timeSummarySchema = new mongoose.Schema(
 );
 
 timeSummarySchema.index(
-  { employeeEmail: 1, month: 1, year: 1 },
+  { officialEmail: 1, month: 1, year: 1 },
   { unique: true }
 );
 

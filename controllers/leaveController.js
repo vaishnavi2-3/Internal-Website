@@ -1,156 +1,83 @@
-const Leave = require("../models/leave");
 const ProfessionalDetails = require("../models/professionalDetails");
 const calculateLeaves = require("../utils/leaveCalculator");
 const { blobServiceClient, containerName } = require("../config/azureBlob");
+const { createLeaveForEmployee } = require("../services/leaveService");
 
-// Azure Upload
+
 async function uploadToAzure(file) {
-  if (!file) return null;
+if (!file) return null;
 
-  const containerClient = blobServiceClient.getContainerClient(containerName);
-  await containerClient.createIfNotExists({ access: "container" });
 
-  const blobName = Date.now() + "-" + file.originalname;
-  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-  await blockBlobClient.uploadData(file.buffer);
+const containerClient = blobServiceClient.getContainerClient(containerName);
+await containerClient.createIfNotExists({ access: "container" });
 
-  return {
-    filename: file.originalname,
-    path: blockBlobClient.url,
-    mimetype: file.mimetype,
-    size: file.size
-  };
+
+const blobName = Date.now() + "-" + file.originalname;
+const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+await blockBlobClient.uploadData(file.buffer);
+
+
+return {
+filename: file.originalname,
+path: blockBlobClient.url,
+mimetype: file.mimetype,
+size: file.size,
+};
 }
 
-// --------------------------------------------
-// APPLY LEAVE (uses login email)
-// --------------------------------------------
+
 exports.createLeave = async (req, res) => {
-  try {
-  const officialEmail = req.user.email; // 👈 taken from token
+try {
+const officialEmail = req.user.email;
 
-    const {
-      employeeId,
-      employeeName,
-      fromDate,
-      toDate,
-      leaveType,
-      reason
-    } = req.body;
 
-// Validate employeeId properly
-if (
-  !employeeId ||
-  employeeId === "null" ||
-  employeeId === "undefined" ||
-  (typeof employeeId === "string" && employeeId.trim() === "")
-) {
-  return res.status(400).json({ msg: "Employee ID cannot be empty." });
+const {
+employeeId,
+employeeName,
+employeeDepartment,
+employeeDesignation,
+fromDate,
+toDate,
+leaveType,
+reason,
+} = req.body;
+
+
+const prof = await ProfessionalDetails.findOne({ employeeId });
+if (!prof) {
+return res.status(404).json({ msg: "Professional details not found" });
 }
 
-// Validate other required fields
-if (!fromDate || !toDate || !leaveType) {
-  return res.status(400).json({ msg: "Missing required fields." });
+
+const start = new Date(fromDate);
+const end = new Date(toDate);
+const daysApplied = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+
+const file = req.file ? await uploadToAzure(req.file) : null;
+
+
+const result = await createLeaveForEmployee({
+employeeId,
+employeeName,
+employeeDepartment,
+employeeDesignation,
+start,
+end,
+daysApplied,
+leaveType,
+reason,
+file,
+officialEmail,
+});
+
+
+res.status(201).json(result);
+} catch (error) {
+res.status(500).json({ msg: "Server Error", error: error.message });
 }
-
-    // ----------------------------------------
-    // 1️⃣ FIND EMPLOYEE PROFESSIONAL DETAILS
-    // ----------------------------------------
-    const prof = await ProfessionalDetails.findOne({ employeeId });
-
-    if (!prof) {
-      return res.status(404).json({
-        msg: "Employee professional details not found. Invalid employeeId"
-      });
-    }
-
-    const joiningDate = new Date(prof.dateOfJoining);
-
-    // ----------------------------------------
-    // 2️⃣ CALCULATE LEAVE DAYS
-    // ----------------------------------------
-    const start = new Date(fromDate);
-    const end = new Date(toDate);
-    const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-
-    // ----------------------------------------
-    // 3️⃣ GET APPROVED LEAVES FOR THIS EMPLOYEE
-    // ----------------------------------------
-    const approvedLeaves = await Leave.find({ employeeId, status: "Approved" });
-
-    const used = { CL: {}, SL: {} };
-
-    approvedLeaves.forEach((lv) => {
-      const monthKey = lv.fromDate.toISOString().substring(0, 7); // YYYY-MM
-      const key = lv.leaveType === "Casual" ? "CL" : "SL";
-
-      used[key][monthKey] = (used[key][monthKey] || 0) + lv.daysApplied;
-    });
-
-    // ----------------------------------------
-    // 4️⃣ CALCULATE LEAVES FROM JOINING MONTH
-    // ----------------------------------------
-    const summary = calculateLeaves(joiningDate, used);
-    const latest = summary.summary.at(-1);
-
-    // ----------------------------------------
-    // 5️⃣ VALIDATE AVAILABLE LEAVES
-    // ----------------------------------------
-    if (leaveType === "Casual" && latest.balanceCL < diffDays) {
-      return res.status(400).json({
-        msg: `Not enough Casual Leaves. Available: ${latest.balanceCL}, Needed: ${diffDays}`
-      });
-    }
-
-    if (leaveType === "Sick" && latest.balanceSL < diffDays) {
-      return res.status(400).json({
-        msg: `Not enough Sick Leaves. Available: ${latest.balanceSL}, Needed: ${diffDays}`
-      });
-    }
-
-    // ----------------------------------------
-    // 6️⃣ FILE UPLOAD (IF EXISTS)
-    // ----------------------------------------
-    let file = null;
-    if (req.file) {
-      file = await uploadToAzure(req.file);
-    }
-
-    // ----------------------------------------
-    // 7️⃣ SAVE LEAVE
-    // ----------------------------------------
-    const leave = new Leave({
-      employeeId,
-      employeeName,
-      officialEmail,
-      fromDate: start,
-      toDate: end,
-      daysApplied: diffDays,
-      leaveType,
-      reason,
-      file,
-      status: "Sent"
-    });
-
-    await leave.save();
-
-    res.status(201).json({
-      msg: "Leave applied successfully",
-      summary,
-      leave,
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      msg: "Server Error",
-      error: error.message
-    });
-  }
 };
 
-// ---------------------------------------------------------------
-// HR APPROVE / REJECT
-// ---------------------------------------------------------------
 
 // ---------------------------------------------------------------
 // LEAVE SUMMARY (JOINING DATE FROM PROFESSIONAL)

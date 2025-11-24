@@ -65,7 +65,8 @@ const {
   verifyLeave,
   updateHrStatus,
   getWeeklyAnalytics,
-  cleanInvalidFiles
+  cleanInvalidFiles,
+  rejectLeave 
 } = require("../controllers/HrLeavesController");
 
 
@@ -108,5 +109,7 @@ router.get("/analytics/weekly", getWeeklyAnalytics);
 // CLEAN INVALID PATHS
 // =====================
 router.get("/admin/cleanup-invalid-files", cleanInvalidFiles);
+router.put("/reject/:employeeId", rejectLeave);
+
 
 module.exports = router;

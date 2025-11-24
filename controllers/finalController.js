@@ -68,3 +68,120 @@ exports.getFullDetailsByEmail = async (req, res) => {
     res.status(500).json({ msg: "Server Error", error: error.message });
   }
 };
+exports.updateFullDetailsByEmail = async (req, res) => {
+  try {
+    const { email } = req.params;
+    const { personal, education, professional } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ msg: "officialEmail is required" });
+    }
+
+    let updatedData = {};
+
+    if (personal) {
+      updatedData.personal = await PersonalDetails.findOneAndUpdate(
+        { officialEmail: email },
+        personal,
+        { new: true, upsert: true }
+      );
+    }
+
+    if (education) {
+      updatedData.education = await Education.findOneAndUpdate(
+        { officialEmail: email },
+        education,
+        { new: true, upsert: true }
+      );
+    }
+
+    if (professional) {
+      updatedData.professional = await ProfessionalDetails.findOneAndUpdate(
+        { officialEmail: email },
+        professional,
+        { new: true, upsert: true }
+      );
+    }
+
+    res.status(200).json({
+      msg: "Employee details updated successfully",
+      email,
+      data: updatedData
+    });
+
+  } catch (error) {
+    res.status(500).json({ msg: "Server Error", error: error.message });
+  }
+};
+// -----------------------------------------------------------
+// PARTIAL UPDATE (PATCH)
+// -----------------------------------------------------------
+exports.partialUpdateFullDetailsByEmail = async (req, res) => {
+  try {
+    const { email } = req.params;
+    const { personal, education, professional } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ msg: "officialEmail is required" });
+    }
+
+    let updatedData = {};
+
+    if (personal) {
+      updatedData.personal = await PersonalDetails.findOneAndUpdate(
+        { officialEmail: email },
+        { $set: personal },
+        { new: true }
+      );
+    }
+
+    if (education) {
+      updatedData.education = await Education.findOneAndUpdate(
+        { officialEmail: email },
+        { $set: education },
+        { new: true }
+      );
+    }
+
+    if (professional) {
+      updatedData.professional = await ProfessionalDetails.findOneAndUpdate(
+        { officialEmail: email },
+        { $set: professional },
+        { new: true }
+      );
+    }
+
+    res.status(200).json({
+      msg: "Employee partial details updated successfully",
+      email,
+      data: updatedData
+    });
+
+  } catch (error) {
+    res.status(500).json({ msg: "Server Error", error: error.message });
+  }
+};
+// -----------------------------------------------------------
+// DELETE ALL DETAILS by Email
+// -----------------------------------------------------------
+exports.deleteFullDetailsByEmail = async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    if (!email) {
+      return res.status(400).json({ msg: "officialEmail is required" });
+    }
+
+    await PersonalDetails.findOneAndDelete({ officialEmail: email });
+    await Education.findOneAndDelete({ officialEmail: email });
+    await ProfessionalDetails.findOneAndDelete({ officialEmail: email });
+
+    res.status(200).json({
+      msg: "Employee full details deleted successfully",
+      email
+    });
+
+  } catch (error) {
+    res.status(500).json({ msg: "Server Error", error: error.message });
+  }
+};

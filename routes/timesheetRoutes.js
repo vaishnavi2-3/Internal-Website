@@ -1,18 +1,3 @@
-// const express = require("express");
-// const router = express.Router();
-// const {
-//   createOrUpdateEntry,
-//   getAllEntries,
-//   getEntryByDate,
-//   deleteEntry,
-// } = require("../controllers/timesheetController");
-
-// router.post("/save", createOrUpdateEntry);
-// router.get("/", getAllEntries);
-// router.get("/:date", getEntryByDate);
-// router.delete("/:date", deleteEntry);
-
-// module.exports = router;
 const express = require("express");
 const router = express.Router();
 const {
@@ -20,6 +5,13 @@ const {
   getMyTimeEntries,
   updateTimeEntryByEmail,
   patchTimeEntryByEmail,
+  getMonthlySummary ,
+  getFilledEmployeesByMonth,
+  getMonthYearFromTimeEntry,
+  getSummaryByEmail,
+  getAllEmployeeMonthlySummaries,
+  getMonthYearList
+
   
 
 
@@ -37,6 +29,17 @@ router.put("/update", verifyToken, updateTimeEntryByEmail);
 // 🔧 Update PARTIAL entry (PATCH)
 router.patch("/update", verifyToken, patchTimeEntryByEmail);
 // router.put("/approve/:leaveId", approveLeaveAndCreateTimesheet);
+
+router.get("/summary",verifyToken, getMonthlySummary);
+router.get("/filled-employees", verifyToken, getFilledEmployeesByMonth);
+
+// ✅ 2. Get month/year grouping from TimeEntry
+router.get("/month-year", verifyToken, getMonthYearFromTimeEntry);
+router.get("/summary", verifyToken, getSummaryByEmail);                 // admin email search
+router.get("/all-summaries", verifyToken, getAllEmployeeMonthlySummaries);
+router.get("/month-year", verifyToken, getMonthYearList);
+
+
 
 
 module.exports = router;

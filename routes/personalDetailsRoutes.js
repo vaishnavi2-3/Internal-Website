@@ -6,7 +6,10 @@ const {
   savePersonalDetails,
   getAllPersonalDetails,
   getPersonalDetailsByEmail,
-  getMyPersonalDetails
+  getMyPersonalDetails,
+  updatePersonalDetails,
+  partialUpdatePersonalDetails,
+  deletePersonalDetails
 } = require("../controllers/personalDetailsController");
 
 const { verifyToken } = require("../middleware/authMiddleware");
@@ -33,6 +36,36 @@ router.post(
 router.get("/me", verifyToken, getMyPersonalDetails);
 router.get("/:email", verifyToken, getPersonalDetailsByEmail);
 router.get("/", getAllPersonalDetails);
+router.put(
+  "/",
+  verifyToken,
+  upload.fields([
+    { name: "photo", maxCount: 1 },
+    { name: "aadharUpload", maxCount: 1 },
+    { name: "panUpload", maxCount: 1 },
+    { name: "marriageCertificate", maxCount: 1 },
+  ]),
+  updatePersonalDetails
+);
+
+// PARTIAL UPDATE
+router.patch(
+  "/",
+  verifyToken,
+  upload.fields([
+    { name: "photo", maxCount: 1 },
+    { name: "aadharUpload", maxCount: 1 },
+    { name: "panUpload", maxCount: 1 },
+    { name: "marriageCertificate", maxCount: 1 },
+  ]),
+  partialUpdatePersonalDetails
+);
+
+// DELETE PERSONAL DETAILS
+router.delete("/", verifyToken, deletePersonalDetails);
+
+
+
 
 
 module.exports = router;

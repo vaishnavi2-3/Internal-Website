@@ -167,9 +167,113 @@ const getEducationByOfficialEmail = async (req, res) => {
     res.status(500).json({ msg: "Server Error", error: error.message });
   }
 };
+const updateEducationDetails = async (req, res) => {
+  try {
+    const officialEmail = req.user.email;
+    const body = req.body;
+
+    // Upload new files if present
+    const getFileObj = async (field) => {
+      if (!req.files?.[field]) return null;
+      const f = req.files[field][0];
+      return await uploadToAzure(f.buffer, f.originalname, f.mimetype);
+    };
+
+    const certificate10 = await getFileObj("certificate10");
+    const certificate12 = await getFileObj("certificate12");
+    const certificateUG = await getFileObj("certificateUG");
+    const certificateMTech = await getFileObj("certificateMTech");
+    const certificateCourse = await getFileObj("certificateCourse");
+
+    const update = {
+      ...body,
+      ...(certificate10 && { certificate10 }),
+      ...(certificate12 && { certificate12 }),
+      ...(certificateUG && { certificateUG }),
+      ...(certificateMTech && { certificateMTech }),
+      ...(certificateCourse && { certificateCourse })
+    };
+
+    const updated = await Education.findOneAndUpdate(
+      { officialEmail },
+      update,
+      { new: true }
+    );
+
+    res.status(200).json({
+      msg: "Education updated successfully",
+      data: updated,
+    });
+
+  } catch (error) {
+    res.status(500).json({ msg: "Server Error", error: error.message });
+  }
+};
+const partialUpdateEducationDetails = async (req, res) => {
+  try {
+    const officialEmail = req.user.email;
+    let body = req.body;
+
+    const getFileObj = async (field) => {
+      if (!req.files?.[field]) return null;
+      const f = req.files[field][0];
+      return await uploadToAzure(f.buffer, f.originalname, f.mimetype);
+    };
+
+    // Attach only updated files
+    if (req.files?.certificate10) {
+      body.certificate10 = await getFileObj("certificate10");
+    }
+    if (req.files?.certificate12) {
+      body.certificate12 = await getFileObj("certificate12");
+    }
+    if (req.files?.certificateUG) {
+      body.certificateUG = await getFileObj("certificateUG");
+    }
+    if (req.files?.certificateMTech) {
+      body.certificateMTech = await getFileObj("certificateMTech");
+    }
+    if (req.files?.certificateCourse) {
+      body.certificateCourse = await getFileObj("certificateCourse");
+    }
+
+    const updated = await Education.findOneAndUpdate(
+      { officialEmail },
+      body,
+      { new: true }
+    );
+
+    res.status(200).json({
+      msg: "Education partially updated",
+      data: updated,
+    });
+
+  } catch (error) {
+    res.status(500).json({ msg: "Server Error", error: error.message });
+  }
+};
+const deleteEducationDetails = async (req, res) => {
+  try {
+    const officialEmail = req.user.email;
+
+    await Education.findOneAndDelete({ officialEmail });
+
+    res.status(200).json({
+      msg: "Education details deleted successfully",
+    });
+
+  } catch (error) {
+    res.status(500).json({ msg: "Server Error", error: error.message });
+  }
+};
+
+
 
 module.exports = {
   saveEducationDetails,
   getEducationByOfficialEmail,
   getMyEducationDetails,
+  updateEducationDetails,
+  partialUpdateEducationDetails,
+  deleteEducationDetails
 };
