@@ -17,13 +17,13 @@ router.get("/:email", getFullDetailsByEmail);
 
 // Get ALL employees full details
 router.get("/", getAllEmployeesFullDetails);
-router.put("/:email", verifyToken, updateFullDetailsByEmail);
+router.put("/update/:email", verifyToken, updateFullDetailsByEmail);
 
 // Partial update
-router.patch("/:email", verifyToken, partialUpdateFullDetailsByEmail);
+router.patch("/partialupdate/:email", verifyToken, partialUpdateFullDetailsByEmail);
 
 // Delete
-router.delete("/:email", verifyToken, deleteFullDetailsByEmail);
+router.delete("/delete/:email", verifyToken, deleteFullDetailsByEmail);
 
 
 module.exports = router;

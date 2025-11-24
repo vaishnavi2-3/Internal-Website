@@ -37,7 +37,7 @@ router.get("/me", verifyToken, getMyPersonalDetails);
 router.get("/:email", verifyToken, getPersonalDetailsByEmail);
 router.get("/", getAllPersonalDetails);
 router.put(
-  "/",
+  "/update",
   verifyToken,
   upload.fields([
     { name: "photo", maxCount: 1 },
@@ -50,7 +50,7 @@ router.put(
 
 // PARTIAL UPDATE
 router.patch(
-  "/",
+  "/partialupdate",
   verifyToken,
   upload.fields([
     { name: "photo", maxCount: 1 },
@@ -62,7 +62,7 @@ router.patch(
 );
 
 // DELETE PERSONAL DETAILS
-router.delete("/", verifyToken, deletePersonalDetails);
+router.delete("/delete", verifyToken, deletePersonalDetails);
 
 
 

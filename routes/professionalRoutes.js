@@ -61,13 +61,13 @@ router.get("/me", verifyToken, getMyProfessionalDetails);
 
 // Get by email (admin)
 router.get("/:email", verifyToken, getProfessionalDetailsByEmail);
-router.put("/", verifyToken, upload.any(), updateProfessionalDetails);
+router.put("/update", verifyToken, upload.any(), updateProfessionalDetails);
 
 // PARTIAL UPDATE
-router.patch("/", verifyToken, upload.any(), partialUpdateProfessionalDetails);
+router.patch("/partialupdate", verifyToken, upload.any(), partialUpdateProfessionalDetails);
 
 // DELETE
-router.delete("/", verifyToken, deleteProfessionalDetails);
+router.delete("/delete", verifyToken, deleteProfessionalDetails);
 
 // Get all (admin)
 router.get("/all",  getAllProfessionalDetails);
