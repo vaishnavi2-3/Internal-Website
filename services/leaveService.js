@@ -28,7 +28,7 @@ daysApplied,
 leaveType,
 reason,
 file,
-status: "Sent",
+status: "Pending",
 });
 
 
@@ -45,7 +45,7 @@ reason,
 file,
 managerStatus: "Pending",
 managerReason: "",
-status: "Sent",
+status: "Pending",
 hrReason: "",
 verified: 0,
 });

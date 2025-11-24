@@ -2,6 +2,8 @@ const ProfessionalDetails = require("../models/professionalDetails");
 const calculateLeaves = require("../utils/leaveCalculator");
 const { blobServiceClient, containerName } = require("../config/azureBlob");
 const { createLeaveForEmployee } = require("../services/leaveService");
+const Leave = require("../models/leave");
+
 
 
 async function uploadToAzure(file) {
