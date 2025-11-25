@@ -53,7 +53,4 @@ router.put("/approve/:employeeId/:date", approveLeaveByEmployeeIdAndDate);
 router.get("/:employeeId", getLeavesByEmployeeId);
 router.get("/file/:leaveId", previewLeaveFile);
 
-
-
-
 module.exports = router;
