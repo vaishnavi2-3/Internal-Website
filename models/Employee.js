@@ -21,11 +21,11 @@ email: {
 },
   phoneNumber: { type: String, required: true },
   password: { type: String, required: true, select: false },
-  role: {
-    type: String,
-    enum: ["employee", "admin"],
-    default: "employee",
-  },
+roles: {
+  type: [String],
+  enum: ["employee", "hr", "manager", "admin"],
+  default: ["employee"]
+},
   resetToken: { type: String },
 resetTokenExpiry: { type: Date }
 

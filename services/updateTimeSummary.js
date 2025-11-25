@@ -1,54 +1,65 @@
 const TimeEntry = require("../models/TimeEntry");
 const TimeSummary = require("../models/TimeSummary");
-const { getWeekNumberInMonth } = require("../utils/dateUtils");
 
 exports.updateTimeSummary = async (officialEmail, date) => {
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear();
 
-  const d = new Date(date);
-  const month = d.getMonth() + 1;
-  const year = d.getFullYear();
-
-  const monthStart = new Date(year, month - 1, 1);
-  const monthEnd = new Date(year, month, 0, 23, 59, 59);
-
+  // Fetch all entries for the month
   const entries = await TimeEntry.find({
     officialEmail,
-    date: { $gte: monthStart, $lte: monthEnd },
+    $expr: {
+      $and: [
+        { $eq: [{ $month: "$date" }, month] },
+        { $eq: [{ $year: "$date" }, year] }
+      ]
+    }
   });
 
-  let dayMap = {};
-  let weeklyTotals = [0, 0, 0, 0, 0, 0];
-  let workingDaysSet = new Set();
+  if (entries.length === 0) {
+    // No entries → delete summary
+    await TimeSummary.deleteOne({ officialEmail, month, year });
+    return;
+  }
 
-  entries.forEach((entry) => {
-    const dateStr = entry.date.toISOString().split("T")[0];
-    const weekIndex = getWeekNumberInMonth(entry.date) - 1;
+  let monthlyTotal = 0;
+  let dailyTotals = [];
+  let weeklyMap = {}; // week → hours
 
-    if (!dayMap[dateStr]) dayMap[dateStr] = 0;
-    dayMap[dateStr] += entry.hours;
+  entries.forEach((e) => {
+    const dateStr = e.date.toISOString().split("T")[0];
+    const week = Math.ceil(e.date.getDate() / 7);
 
-    weeklyTotals[weekIndex] += entry.hours;
-    workingDaysSet.add(dateStr);
+    monthlyTotal += e.hours;
+
+    dailyTotals.push({
+      date: dateStr,
+      hours: e.hours
+    });
+
+    weeklyMap[week] = (weeklyMap[week] || 0) + e.hours;
   });
 
-  const dailyTotals = Object.entries(dayMap).map(([date, totalHours]) => ({
-    date,
-    totalHours,
+  // Convert weeklyMap → array for 6 weeks
+  const weeklyTotals = Array.from({ length: 6 }, (_, i) => ({
+    week: i + 1,
+    hours: weeklyMap[i + 1] || 0
   }));
 
-  const monthlyTotal = dailyTotals.reduce((sum, d) => sum + d.totalHours, 0);
-
+  // Save summary (upsert)
   await TimeSummary.findOneAndUpdate(
     { officialEmail, month, year },
     {
       officialEmail,
       month,
       year,
-      dailyTotals,
-      weeklyTotals,
       monthlyTotal,
-      workingDays: workingDaysSet.size,
+      workingDays: entries.length,
+      dailyTotals,
+      weeklyTotals
     },
     { upsert: true, new: true }
   );
+
+  return true;
 };
