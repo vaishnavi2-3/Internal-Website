@@ -144,36 +144,76 @@ exports.addHRReason = async (req, res) => {
 // ================================
 // HR VERIFY (APPROVE) LEAVE
 // ================================
+// exports.verifyLeave = async (req, res) => {
+//   try {
+//     const employeeId = req.params.employeeId;
+
+// const latestLeave = await HrLeave.findOne({
+//   employeeId,
+//   status: { $in: ["Pending"] }
+// }).sort({ createdAt: -1 });
+
+//     if (!latestLeave) {
+//       return res.status(404).json({ message: "No leave found for employee" });
+//     }
+
+//     // Update HR Leave
+//     latestLeave.status = "Approved";
+//     latestLeave.verified = 1;
+//     await latestLeave.save();
+
+//     // Update Employee Leave
+//     const updatedEmployeeLeave = await Leave.findOneAndUpdate(
+//       { employeeId },
+//       { $set: { status: "Approved" } },
+//       { new: true, sort: { createdAt: -1 } }
+//     );
+
+//     return res.json({
+//       message: "Leave approved successfully",
+//       hrLeave: latestLeave,
+//       employeeLeave: updatedEmployeeLeave,
+//     });
+//   } catch (err) {
+//     return res.status(500).json({ error: err.message });
+//   }
+// };
 exports.verifyLeave = async (req, res) => {
   try {
     const employeeId = req.params.employeeId;
 
-const latestLeave = await HrLeave.findOne({
-  employeeId,
-  status: { $in: ["Pending"] }
-}).sort({ createdAt: -1 });
+    const latestLeave = await HrLeave.findOne({
+      employeeId,
+      status: "Pending"
+    }).sort({ createdAt: -1 });
 
     if (!latestLeave) {
-      return res.status(404).json({ message: "No leave found for employee" });
+      return res.status(404).json({ message: "No pending leave found" });
     }
 
-    // Update HR Leave
     latestLeave.status = "Approved";
     latestLeave.verified = 1;
     await latestLeave.save();
 
-    // Update Employee Leave
     const updatedEmployeeLeave = await Leave.findOneAndUpdate(
       { employeeId },
       { $set: { status: "Approved" } },
       { new: true, sort: { createdAt: -1 } }
     );
 
+    // ⭐ Auto create timesheet leave entries
+    await applyLeaveToTimesheet(
+      updatedEmployeeLeave.officialEmail,
+      updatedEmployeeLeave.fromDate,
+      updatedEmployeeLeave.toDate
+    );
+
     return res.json({
-      message: "Leave approved successfully",
+      message: "Leave approved and applied to timesheet successfully!",
       hrLeave: latestLeave,
-      employeeLeave: updatedEmployeeLeave,
+      employeeLeave: updatedEmployeeLeave
     });
+
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

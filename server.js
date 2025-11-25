@@ -29,7 +29,7 @@ const mergeRoutes = require("./routes/mergeRoutes");
 const projectRoutes = require("./routes/projectTimelineRoutes");
 const trainingRoutes = require("./routes/trainingRoutes");
 const certificationRoutes = require("./routes/certificationRoutes");
-
+const jobRoutes = require("./routes/jobRoutes");
 
 
 // serve uploaded files statically
@@ -66,6 +66,7 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/trainings", trainingRoutes);
 app.use("/api/certifications", certificationRoutes);
 app.use("/api/hrleaves", require("./routes/HrLeavesRoutes"));
+app.use("/api", jobRoutes);
 
 
 //console.log("serevr");

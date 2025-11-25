@@ -19,6 +19,10 @@ const timeEntrySchema = new mongoose.Schema(
     
     projectType: { type: String, required: true },
     hours: { type: Number, required: true },
+
+    // ⭐ NEW
+    isLeave: { type: Boolean, default: false },
+    isLocked: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

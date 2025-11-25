@@ -91,6 +91,16 @@ exports.updateTimeEntryByEmail = async (req, res) => {
     if (!date) return res.status(400).json({ msg: "Date is required" });
         const formattedDate = new Date(date);
 
+    
+    // 1️⃣ Check existing entry first
+    const existingEntry = await TimeEntry.findOne({ officialEmail, date: formattedDate });
+
+    // 🔥 BLOCK if timesheet entry is locked (leave day)
+    if (existingEntry?.isLocked) {
+      return res.status(403).json({
+        msg: "⛔ Timesheet cannot be modified on approved leave days"
+      });
+    }
 
     const leaveExists = await Leave.findOne({
       officialEmail: officialEmail,
@@ -134,6 +144,15 @@ exports.patchTimeEntryByEmail = async (req, res) => {
 
     if (!date) return res.status(400).json({ msg: "Date is required" });
         const formattedDate = new Date(date);
+
+    const existingEntry = await TimeEntry.findOne({ officialEmail, date: formattedDate });
+
+// 🔥 ADD HERE
+if (existingEntry?.isLocked) {
+  return res.status(403).json({
+    msg: "⛔ Timesheet cannot be modified on approved leave days"
+  });
+}
 
 
     // 1️⃣ Block if approved leave
@@ -362,5 +381,36 @@ exports.getMonthYearList = async (req, res) => {
 
   } catch (err) {
     res.status(500).json({ msg: err.message });
+  }
+};
+function getDateRangeArray(start, end) {
+  const arr = [];
+  let dt = new Date(start);
+  while (dt <= end) {
+    arr.push(new Date(dt));
+    dt.setDate(dt.getDate() + 1);
+  }
+  return arr;
+}
+
+exports.applyLeaveToTimesheet = async (employeeEmail, start, end) => {
+  const dates = getDateRangeArray(start, end);
+
+  for (const date of dates) {
+    await TimeEntry.findOneAndUpdate(
+      { officialEmail: employeeEmail, date },
+      {
+        isLeave: true,
+        isLocked: true,
+        category: "Leave",
+        projectName: "Leave",
+        projectCode: "-",
+        projectType: "N/A",
+        hours: 0,
+      },
+      { upsert: true } // Create entry if not exists
+    );
+
+    await updateTimeSummary(employeeEmail, date);
   }
 };

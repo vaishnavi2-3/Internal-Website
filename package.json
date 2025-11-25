@@ -24,7 +24,6 @@
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.10",
-    "nodemon": "^3.1.11",
     "path": "^0.12.7",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
@@ -36,5 +35,8 @@
   "bugs": {
     "url": "https://github.com/vaishnavi2-3/Internal-Website/issues"
   },
-  "homepage": "https://github.com/vaishnavi2-3/Internal-Website#readme"
+  "homepage": "https://github.com/vaishnavi2-3/Internal-Website#readme",
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
 }
