@@ -173,11 +173,12 @@ const updateEducationDetails = async (req, res) => {
     const body = req.body;
 
     // Upload new files if present
-    const getFileObj = async (field) => {
-      if (!req.files?.[field]) return null;
-      const f = req.files[field][0];
-      return await uploadToAzure(f.buffer, f.originalname, f.mimetype);
-    };
+const getFileObj = async (field) => {
+  if (!req.files || !req.files[field] || !req.files[field][0]) return null;
+
+  const f = req.files[field][0];
+  return await uploadToAzure(f.buffer, f.originalname, f.mimetype);
+};
 
     const certificate10 = await getFileObj("certificate10");
     const certificate12 = await getFileObj("certificate12");
@@ -214,41 +215,42 @@ const partialUpdateEducationDetails = async (req, res) => {
     const officialEmail = req.user.email;
     let body = req.body;
 
+    // Helper function for file upload
     const getFileObj = async (field) => {
-      if (!req.files?.[field]) return null;
+      if (!req.files?.[field] || !req.files[field][0]) return null;
+
       const f = req.files[field][0];
       return await uploadToAzure(f.buffer, f.originalname, f.mimetype);
     };
 
+    const update = { ...body };
+
     // Attach only updated files
-    if (req.files?.certificate10) {
-      body.certificate10 = await getFileObj("certificate10");
-    }
-    if (req.files?.certificate12) {
-      body.certificate12 = await getFileObj("certificate12");
-    }
-    if (req.files?.certificateUG) {
-      body.certificateUG = await getFileObj("certificateUG");
-    }
-    if (req.files?.certificateMTech) {
-      body.certificateMTech = await getFileObj("certificateMTech");
-    }
-    if (req.files?.certificateCourse) {
-      body.certificateCourse = await getFileObj("certificateCourse");
-    }
+    const certificate10 = await getFileObj("certificate10");
+    const certificate12 = await getFileObj("certificate12");
+    const certificateUG = await getFileObj("certificateUG");
+    const certificateMTech = await getFileObj("certificateMTech");
+    const certificateCourse = await getFileObj("certificateCourse");
+
+    if (certificate10) update.certificate10 = certificate10;
+    if (certificate12) update.certificate12 = certificate12;
+    if (certificateUG) update.certificateUG = certificateUG;
+    if (certificateMTech) update.certificateMTech = certificateMTech;
+    if (certificateCourse) update.certificateCourse = certificateCourse;
 
     const updated = await Education.findOneAndUpdate(
       { officialEmail },
-      body,
+      update,
       { new: true }
     );
 
     res.status(200).json({
-      msg: "Education partially updated",
+      msg: "Education details partially updated",
       data: updated,
     });
 
   } catch (error) {
+    console.error("Partial update error:", error);
     res.status(500).json({ msg: "Server Error", error: error.message });
   }
 };

@@ -188,18 +188,9 @@ exports.updatePersonalDetails = async (req, res) => {
     const emailFromToken = req.user.email;
     let body = req.body;
 
-    // Convert booleans
+    // Convert values
     body.isMarried = body.isMarried === "true" || body.isMarried === true;
 
-    if (body.sameAddress === "true" || body.sameAddress === true) {
-      body.permanentAddress = body.currentAddress;
-      body.landmarkPermanent = body.landmarkCurrent;
-      body.pincodePermanent = body.pincodeCurrent;
-      body.villagePermanent = body.villageCurrent;
-      body.statePermanent = body.stateCurrent;
-    }
-
-    // Convert children
     if (body.children) {
       try {
         body.children =
@@ -211,38 +202,32 @@ exports.updatePersonalDetails = async (req, res) => {
       }
     }
 
-    // Upload helper
+    // Helper to upload file
     const getFileObj = async (field) => {
-      if (!req.files?.[field]) return null;
+      if (!req.files || !req.files[field] || !req.files[field][0]) return null;
       const f = req.files[field][0];
       return await uploadToAzure(f.buffer, f.originalname, f.mimetype);
     };
 
-    // File uploads
-    const photo = await getFileObj("photo");
-    const aadharUpload = await getFileObj("aadharUpload");
-    const panUpload = await getFileObj("panUpload");
+    // Upload new files if provided
+    const photoObj = await getFileObj("photo");
+    const aadharObj = await getFileObj("aadharUpload");
+    const panObj = await getFileObj("panUpload");
+    const marriageObj = await getFileObj("marriageCertificate");
 
-    let marriageCertificate = null;
+    // Build update data
+    const updateData = { ...body };
 
-    if (body.isMarried && req.files?.marriageCertificate) {
-      const f = req.files.marriageCertificate[0];
-      marriageCertificate = await uploadToAzure(
-        f.buffer,
-        f.originalname,
-        f.mimetype
-      );
+    // Replace ONLY if new file uploaded
+    if (photoObj) updateData.photo = photoObj.path;
+    if (aadharObj) updateData.aadharUpload = aadharObj;
+    if (panObj) updateData.panUpload = panObj;
+
+    if (body.isMarried) {
+      if (marriageObj) updateData.marriageCertificate = marriageObj;
+    } else {
+      delete updateData.marriageCertificate;
     }
-
-    if (!body.isMarried) delete body.marriageCertificate;
-
-    const updateData = {
-      ...body,
-      ...(photo && { photo: photo.path }),
-      ...(aadharUpload && { aadharUpload }),
-      ...(panUpload && { panUpload }),
-      ...(marriageCertificate && { marriageCertificate }),
-    };
 
     const updated = await PersonalDetails.findOneAndUpdate(
       { officialEmail: emailFromToken },
@@ -254,8 +239,9 @@ exports.updatePersonalDetails = async (req, res) => {
       msg: "Personal details updated successfully",
       data: updated,
     });
+
   } catch (err) {
-    res.status(500).json({ msg: "Server Error", error: err.message });
+    return res.status(500).json({ msg: "Server Error", error: err.message });
   }
 };
 // 🌟 Partial Update Personal Details
@@ -280,26 +266,18 @@ exports.partialUpdatePersonalDetails = async (req, res) => {
       }
     }
 
-    // Upload helper
     const getFileObj = async (field) => {
-      if (!req.files?.[field]) return null;
+      if (!req.files || !req.files[field] || !req.files[field][0]) return null;
       const f = req.files[field][0];
       return await uploadToAzure(f.buffer, f.originalname, f.mimetype);
     };
 
     const update = { ...body };
 
-    if (req.files?.photo)
-      update.photo = (await getFileObj("photo")).path;
-
-    if (req.files?.aadharUpload)
-      update.aadharUpload = await getFileObj("aadharUpload");
-
-    if (req.files?.panUpload)
-      update.panUpload = await getFileObj("panUpload");
-
-    if (req.files?.marriageCertificate)
-      update.marriageCertificate = await getFileObj("marriageCertificate");
+    if (req.files?.photo) update.photo = (await getFileObj("photo")).path;
+    if (req.files?.aadharUpload) update.aadharUpload = await getFileObj("aadharUpload");
+    if (req.files?.panUpload) update.panUpload = await getFileObj("panUpload");
+    if (req.files?.marriageCertificate) update.marriageCertificate = await getFileObj("marriageCertificate");
 
     const updated = await PersonalDetails.findOneAndUpdate(
       { officialEmail: emailFromToken },
@@ -311,6 +289,7 @@ exports.partialUpdatePersonalDetails = async (req, res) => {
       msg: "Personal details partially updated",
       data: updated,
     });
+
   } catch (err) {
     res.status(500).json({ msg: "Server Error", error: err.message });
   }
