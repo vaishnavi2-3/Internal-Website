@@ -14,7 +14,7 @@ const ProfessionalDetails = require("../models/professionalDetails");
 // 🔐 Login Employee
 exports.loginEmployee = async (req, res) => {
   try {
-    const { email, password } = req.body;
+const { email, password, role } = req.body;
 
     const employee = await Employee.findOne({ email }).select("+password");
     if (!employee) {
@@ -25,6 +25,10 @@ exports.loginEmployee = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ msg: "Invalid email or password" });
     }
+    if (role !== employee.role) {
+  return res.status(403).json({ msg: "You are not allowed to login with this role" });
+}
+
 
     // 🔐 Generate JWT
     const token = jwt.sign(
