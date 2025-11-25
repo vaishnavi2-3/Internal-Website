@@ -8,11 +8,11 @@ const timeEntrySchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
     },
-    date: { 
-      type: Date, 
-      required: true,
-      set: (v) => new Date(v)
-    },
+date: {
+  type: Date,
+  required: true,
+  set: (v) => new Date(new Date(v).setHours(0, 0, 0, 0))
+},
     category: { type: String, required: true },
     projectName: { type: String, required: true },
     projectCode: { type: String, required: true },
