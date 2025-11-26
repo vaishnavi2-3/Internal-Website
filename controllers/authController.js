@@ -273,6 +273,10 @@ exports.handlePassword = async (req, res) => {
 
       return res.json({ msg: "Reset link sent to email" });
     }
+     console.log("SMTP DEBUG:", {
+  user: process.env.EMAIL_USER,
+  pass: process.env.EMAIL_PASS ? "Loaded" : "Missing"
+});
 
     // ---------------- RESET PASSWORD ----------------
     if (token && newPassword && confirmPassword) {

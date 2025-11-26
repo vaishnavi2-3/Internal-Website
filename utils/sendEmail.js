@@ -1,4 +1,3 @@
-// utils/sendEmail.js
 const nodemailer = require("nodemailer");
 
 const sendEmail = async ({ to, subject, html }) => {
@@ -7,11 +6,18 @@ const sendEmail = async ({ to, subject, html }) => {
       throw new Error(`Invalid recipient email: ${to}`);
     }
 
+    // Debug to confirm env variables are loading (Vercel)
+    console.log("EMAIL DEBUG:", {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS ? "OK" : "MISSING",
+      client_url: process.env.CLIENT_URL
+    });
+
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: process.env.EMAIL_USER, // e.g. noreply@dhatvibs.com
-        pass: process.env.EMAIL_PASS, // app password
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
 

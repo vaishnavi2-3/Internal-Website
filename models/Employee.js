@@ -69,7 +69,7 @@ const employeeSchema = new mongoose.Schema({
   firstName: String,
   lastName: String,
   email: { type: String, required: true, unique: true },
-  role: { type: String, enum: ["Employee", "manager", "hr", "admin"], default: "Employee" },
+  role: { type: String, enum: ["Employee", "Manager", "HR", "Admin"], default: "Employee" },
 
   password: { type: String, required: true, select: false },
   confirmPassword: { type: String, select: false },
