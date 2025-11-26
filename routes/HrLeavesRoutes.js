@@ -47,7 +47,8 @@ router.put("/hr/status/employee/:employeeId",verifyToken, updateHrStatus);
 //=====================
 // HR VERIFY LEAVE (Employee ID)
 // =====================
-router.put("/hr/verify/employee/:employeeId", verifyLeave);
+router.put("/hr/status/employee/:employeeId",verifyToken, updateHrStatus);
+router.put("/hr/verify/employee/:leaveId", verifyToken,verifyLeave);
 
 // =====================
 // WEEKLY ANALYTICS

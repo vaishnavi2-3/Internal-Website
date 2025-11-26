@@ -208,36 +208,44 @@ exports.verifyLeave = async (req, res) => {
   try {
     const { leaveId } = req.params;
 
-    const latestLeave = await HrLeave.findOne({
-      employeeId,
-      status: "Pending"
-    }).sort({ createdAt: -1 });
+    // 1️⃣ Find the correct HR Leave entry
+    const hrLeave = await HrLeave.findById(leaveId);
 
-    if (!latestLeave) {
-      return res.status(404).json({ message: "No pending leave found" });
+    if (!hrLeave) {
+      return res.status(404).json({ message: "Leave not found" });
     }
 
-    latestLeave.status = "Approved";
-    latestLeave.verified = 1;
-    await latestLeave.save();
+    if (hrLeave.status !== "Pending") {
+      return res.status(400).json({ message: "Leave already processed" });
+    }
 
-    const updatedEmployeeLeave = await Leave.findOneAndUpdate(
+    // 2️⃣ Approve HR Leave
+    hrLeave.status = "Approved";
+    hrLeave.verified = 1;
+    await hrLeave.save();
+
+    // 3️⃣ Approve Employee Leave (linked via hrLeaveId)
+    const employeeLeave = await Leave.findOneAndUpdate(
       { hrLeaveId: leaveId },
       { $set: { status: "Approved" } },
       { new: true }
     );
 
-    // ⭐ Auto create timesheet leave entries
+    if (!employeeLeave) {
+      return res.status(404).json({ message: "Employee leave not found" });
+    }
+
+    // 4️⃣ Auto-create timesheet leave entries
     await applyLeaveToTimesheet(
-      updatedEmployeeLeave.officialEmail,
-      updatedEmployeeLeave.fromDate,
-      updatedEmployeeLeave.toDate
+      employeeLeave.officialEmail,
+      employeeLeave.fromDate,
+      employeeLeave.toDate
     );
 
     return res.json({
       message: "Leave approved and applied to timesheet successfully!",
-      hrLeave: latestLeave,
-      employeeLeave: updatedEmployeeLeave
+      hrLeave,
+      employeeLeave
     });
 
   } catch (err) {
