@@ -116,25 +116,24 @@ exports.getAllHrLeaves = async (req, res) => {
 // ================================
 exports.managerAction = async (req, res) => {
   try {
-    const employeeId = req.params.employeeId;
+    const { leaveId } = req.params;
     const { managerStatus, managerReason } = req.body;
 
-    const latestLeave = await HrLeave.findOne({ employeeId })
-      .sort({ createdAt: -1 });
+    const leave = await HrLeave.findById(leaveId);
 
-    if (!latestLeave) {
-      return res.status(404).json({ message: "No leave found for employee" });
+    if (!leave) {
+      return res.status(404).json({ message: "Leave not found" });
     }
 
-    latestLeave.managerStatus = managerStatus;
-    latestLeave.managerReason = managerReason;
-
-    await latestLeave.save();
+    leave.managerStatus = managerStatus;
+    leave.managerReason = managerReason;
+    await leave.save();
 
     return res.json({
       message: "Manager updated leave",
-      data: latestLeave,
+      data: leave,
     });
+
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -145,23 +144,23 @@ exports.managerAction = async (req, res) => {
 // ================================
 exports.addHRReason = async (req, res) => {
   try {
-    const employeeId = req.params.employeeId;
+    const { leaveId } = req.params;  
     const { hrReason } = req.body;
 
-    const latestLeave = await HrLeave.findOne({ employeeId })
-      .sort({ createdAt: -1 });
+    const leave = await HrLeave.findById(leaveId);
 
-    if (!latestLeave) {
-      return res.status(404).json({ message: "No leave found" });
+    if (!leave) {
+      return res.status(404).json({ message: "Leave not found" });
     }
 
-    latestLeave.hrReason = hrReason;
-    await latestLeave.save();
+    leave.hrReason = hrReason;
+    await leave.save();
 
     return res.json({
-      message: "HR reason updated",
-      updated: latestLeave,
+      message: "HR reason updated successfully",
+      data: leave,
     });
+
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -172,34 +171,36 @@ exports.addHRReason = async (req, res) => {
 // ================================
 exports.verifyLeave = async (req, res) => {
   try {
-    const employeeId = req.params.employeeId;
+    const { leaveId } = req.params;
 
-const latestLeave = await HrLeave.findOne({
-  employeeId,
-  status: { $in: ["Pending"] }
-}).sort({ createdAt: -1 });
+    const leave = await HrLeave.findById(leaveId);
 
-    if (!latestLeave) {
-      return res.status(404).json({ message: "No leave found for employee" });
+    if (!leave) {
+      return res.status(404).json({ message: "Leave not found" });
     }
 
-    // Update HR Leave
-    latestLeave.status = "Approved";
-    latestLeave.verified = 1;
-    await latestLeave.save();
+    if (leave.status !== "Pending") {
+      return res.status(400).json({ message: "Leave already processed" });
+    }
 
-    // Update Employee Leave
+    // Approve HR leave
+    leave.status = "Approved";
+    leave.verified = 1;
+    await leave.save();
+
+    // Update employee leave
     const updatedEmployeeLeave = await Leave.findOneAndUpdate(
-      { employeeId },
+      { hrLeaveId: leaveId },
       { $set: { status: "Approved" } },
-      { new: true, sort: { createdAt: -1 } }
+      { new: true }
     );
 
     return res.json({
       message: "Leave approved successfully",
-      hrLeave: latestLeave,
+      hrLeave: leave,
       employeeLeave: updatedEmployeeLeave,
     });
+
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -210,31 +211,34 @@ const latestLeave = await HrLeave.findOne({
 // ================================
 exports.rejectLeave = async (req, res) => {
   try {
-    const employeeId = req.params.employeeId;
+    const { leaveId } = req.params;
     const { hrReason } = req.body;
 
-    const latestLeave = await HrLeave.findOne({
-      employeeId,
-      status: "Pending"
-    }).sort({ createdAt: -1 });
+    const leave = await HrLeave.findById(leaveId);
 
-    if (!latestLeave) {
-      return res.status(404).json({ message: "No pending leave found" });
+    if (!leave) {
+      return res.status(404).json({ message: "Leave not found" });
     }
 
-    latestLeave.status = "Rejected";
-    latestLeave.hrReason = hrReason || "";
-    await latestLeave.save();
+    if (leave.status !== "Pending") {
+      return res.status(400).json({ message: "Leave is already processed" });
+    }
 
+    // Update HR leave
+    leave.status = "Rejected";
+    leave.hrReason = hrReason || "";
+    await leave.save();
+
+    // Update employee leave
     const updatedEmployeeLeave = await Leave.findOneAndUpdate(
-      { hrLeaveId: latestLeave._id },
+      { hrLeaveId: leaveId },
       { $set: { status: "Rejected" } },
       { new: true }
     );
 
     res.json({
       message: "Leave rejected",
-      hrLeave: latestLeave,
+      hrLeave: leave,
       employeeLeave: updatedEmployeeLeave
     });
 

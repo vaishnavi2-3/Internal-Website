@@ -22,6 +22,11 @@ const leaveSchema = new Schema(
     toDate: { type: Date, required: true },
     daysApplied: { type: Number, required: true },
     leaveType: { type: String, required: true },
+      hrLeaveId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "HrLeave"
+  },
+
     customTypes: { type: [String], default: [] },
     reason: { type: String },
     file: { type: fileSub, default: null },

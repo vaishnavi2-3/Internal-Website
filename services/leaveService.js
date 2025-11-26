@@ -54,6 +54,8 @@ verified: 0,
 // 3️⃣ Link HR leave to Employee leave
 leave.hrLeaveId = hrLeave._id;
 await leave.save();
+  hrLeave.employeeLeaveId = leave._id;   // <-- ADD THIS
+  await hrLeave.save();                  // <-- ADD THIS
 
 
 return { leave, hrLeave };
