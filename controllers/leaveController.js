@@ -36,8 +36,6 @@ const officialEmail = req.user.email;
 const {
 employeeId,
 employeeName,
-employeeDepartment,
-employeeDesignation,
 fromDate,
 toDate,
 leaveType,
@@ -51,12 +49,18 @@ return res.status(404).json({ msg: "Professional details not found" });
 }
 
 
-const start = new Date(fromDate);
-const end = new Date(toDate);
-const daysApplied = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
 
+    const employeeDepartment = prof.department;
+    const employeeDesignation = prof.role;  // or prof.designation based on your DB
 
-const file = req.file ? await uploadToAzure(req.file) : null;
+    // 📄 Upload file if exists
+    const file = req.file ? await uploadToAzure(req.file) : null;
+
+    // 📅 Calculate leave days
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
+    const daysApplied =
+      Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
 
 
 const result = await createLeaveForEmployee({
