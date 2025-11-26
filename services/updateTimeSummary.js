@@ -5,7 +5,7 @@ exports.updateTimeSummary = async (officialEmail, date) => {
   const month = date.getMonth() + 1;
   const year = date.getFullYear();
 
-  // Fetch all entries for the month
+  // Fetch all entries for month
   const entries = await TimeEntry.find({
     officialEmail,
     $expr: {
@@ -17,36 +17,46 @@ exports.updateTimeSummary = async (officialEmail, date) => {
   });
 
   if (entries.length === 0) {
-    // No entries → delete summary
     await TimeSummary.deleteOne({ officialEmail, month, year });
     return;
   }
 
   let monthlyTotal = 0;
-  let dailyTotals = [];
-  let weeklyMap = {}; // week → hours
+  let dailyMap = {};       // date → totalHours
+  let weeklyMap = {};      // week → totalHours
 
   entries.forEach((e) => {
     const dateStr = e.date.toISOString().split("T")[0];
     const week = Math.ceil(e.date.getDate() / 7);
 
-    monthlyTotal += e.hours;
+    // Cap hours to MAX 9
+    const cappedHours = Math.min(e.hours, 9);
 
-    dailyTotals.push({
-      date: dateStr,
-      hours: e.hours
-    });
+    // Daily total
+    dailyMap[dateStr] = (dailyMap[dateStr] || 0) + cappedHours;
 
-    weeklyMap[week] = (weeklyMap[week] || 0) + e.hours;
+    // Weekly total
+    weeklyMap[week] = (weeklyMap[week] || 0) + cappedHours;
+
+    // Monthly total
+    monthlyTotal += cappedHours;
   });
 
-  // Convert weeklyMap → array for 6 weeks
-  const weeklyTotals = Array.from({ length: 6 }, (_, i) => ({
-    week: i + 1,
-    hours: weeklyMap[i + 1] || 0
+  // Convert daily map → array
+  const dailyTotals = Object.keys(dailyMap).map((d) => ({
+    date: d,
+    hours: dailyMap[d],
   }));
 
-  // Save summary (upsert)
+  // Weekly totals (1 to 6)
+  const weeklyTotals = Array.from({ length: 6 }, (_, i) => ({
+    week: i + 1,
+    hours: weeklyMap[i + 1] || 0,
+  }));
+
+  // Working days = unique dates
+  const workingDays = Object.keys(dailyMap).length;
+
   await TimeSummary.findOneAndUpdate(
     { officialEmail, month, year },
     {
@@ -54,12 +64,10 @@ exports.updateTimeSummary = async (officialEmail, date) => {
       month,
       year,
       monthlyTotal,
-      workingDays: entries.length,
+      workingDays,
       dailyTotals,
-      weeklyTotals
+      weeklyTotals,
     },
     { upsert: true, new: true }
   );
-
-  return true;
 };

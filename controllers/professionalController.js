@@ -189,27 +189,26 @@ exports.updateProfessionalDetails = async (req, res) => {
     }
 
     // Upload files for each experience (relievingLetter + salarySlips)
-    for (let i = 0; i < experiences.length; i++) {
-      const exp = experiences[i];
+for (let i = 0; i < experiences.length; i++) {
+  const exp = experiences[i];
 
-      // Relieving letter
-      const relFile = req.files?.find(
-        (f) => f.fieldname === `experiences[${i}][relivingLetter]`
-      );
-      exp.relivingLetter = relFile ? await uploadToAzure(relFile) : null;
+  // Relieving Letter
+  const relFiles = getFilesByField(`experiences[${i}][relivingLetter]`);
+  if (relFiles.length > 0) {
+    exp.relivingLetter = await uploadToAzure(relFiles[0]);
+  }
 
-      // Salary slips
-      const slipFiles =
-        req.files?.filter(
-          (f) => f.fieldname === `experiences[${i}][salarySlips]`
-        ) || [];
+  // Salary Slips
+  const slipFiles = getFilesByField(`experiences[${i}][salarySlips]`);
+  if (slipFiles.length > 0) {
+    exp.salarySlips = [];
 
-      exp.salarySlips = [];
-      for (const slip of slipFiles) {
-        const uploaded = await uploadToAzure(slip);
-        if (uploaded) exp.salarySlips.push(uploaded);
-      }
+    for (const slip of slipFiles) {
+      const uploaded = await uploadToAzure(slip);
+      if (uploaded) exp.salarySlips.push(uploaded);
     }
+  }
+}
 
     const updateData = {
       employeeId: body.employeeId,
@@ -258,22 +257,18 @@ exports.partialUpdateProfessionalDetails = async (req, res) => {
         const exp = updateData.experiences[i];
 
         // Relieving letter
-        const relFile = req.files?.find(
-          (f) => f.fieldname === `experiences[${i}][relivingLetter]`
-        );
-        if (relFile) exp.relivingLetter = await uploadToAzure(relFile);
+  const relFiles = getFilesByField(`experiences[${i}][relivingLetter]`);
+  if (relFiles.length > 0) {
+    exp.relivingLetter = await uploadToAzure(relFiles[0]);
+  }
 
-        // Salary slips
-        const slipFiles =
-          req.files?.filter(
-            (f) => f.fieldname === `experiences[${i}][salarySlips]`
-          ) || [];
-
-        if (slipFiles.length > 0) {
-          exp.salarySlips = [];
-          for (const slip of slipFiles) {
-            const uploaded = await uploadToAzure(slip);
-            if (uploaded) exp.salarySlips.push(uploaded);
+  // Salary Slips
+  const slipFiles = getFilesByField(`experiences[${i}][salarySlips]`);
+  if (slipFiles.length > 0) {
+    exp.salarySlips = [];
+    for (const slip of slipFiles) {
+      const uploaded = await uploadToAzure(slip);
+      if (uploaded) exp.salarySlips.push(uploaded);
           }
         }
       }

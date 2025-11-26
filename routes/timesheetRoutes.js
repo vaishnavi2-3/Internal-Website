@@ -1,66 +1,55 @@
 const express = require("express");
 const router = express.Router();
-
-const {
-  createTimeEntry,
-  getMyTimeEntries,
-  updateTimeEntryByEmail,
-  patchTimeEntryByEmail,
-  getMonthlySummary,
-  getFilledEmployeesByMonth,
-  getMonthYearFromTimeEntry,
-  getSummaryByEmail,
-  getAllEmployeeMonthlySummaries,
-  getMonthYearList
-} = require("../controllers/timesheetController");
-
+const timesheetController = require("../controllers/timesheetController");
 const { verifyToken } = require("../middleware/authMiddleware");
 
+// ---------------------- USER ROUTES ----------------------
 
-// =========================================================
-// TIMESHEET CRUD (EMPLOYEE)
-// =========================================================
+// Create timesheet entry
+router.post("/timesheet", verifyToken, timesheetController.createTimeEntry);
 
-// Create timesheet
-router.post("/create", verifyToken, createTimeEntry);
+// Get all my entries
+router.get("/timesheet", verifyToken, timesheetController.getMyTimeEntries);
 
-// Get all entries of logged-in employee
-router.get("/", verifyToken, getMyTimeEntries);
+// Update entry (PUT)
+router.put("/timesheet/:id", verifyToken, timesheetController.updateTimeEntryByEmail);
 
-// Update full timesheet entry
-router.put("/update", verifyToken, updateTimeEntryByEmail);
+// Patch entry (PATCH)
+router.patch("/timesheet/:id", verifyToken, timesheetController.patchTimeEntryByEmail);
 
-// Partial update of timesheet entry
-router.patch("/update", verifyToken, patchTimeEntryByEmail);
+// Delete entry
+router.delete("/timesheet/:id", verifyToken, timesheetController.deleteTimeEntry);
 
+// Monthly summary (my summary)
+router.get("/summary/monthly", verifyToken, timesheetController.getMonthlySummary);
 
-// =========================================================
-// EMPLOYEE SUMMARY ROUTES
-// =========================================================
+// List of all months I filled
+router.get("/timesheet/month-year/list", verifyToken, timesheetController.getMonthYearList);
 
-// Get logged-in employee’s monthly summary
-router.get("/summary", verifyToken, getMonthlySummary);
+// Monthly breakdown directly from TimeEntry
+router.get("/timesheet/from-entry", verifyToken, timesheetController.getMonthYearFromTimeEntry);
 
-// Get list of available months/years for user
-router.get("/month-year-list", verifyToken, getMonthYearList);
+// ---------------------- ADMIN ROUTES ----------------------
 
-// Calculate summary directly from TimeEntry (backup)
-router.get("/calculate-summary", verifyToken, getMonthYearFromTimeEntry);
+// Get filled employees for a month
+router.get(
+  "/admin/timesheet/filled-employees",
+  verifyToken,
+  timesheetController.getFilledEmployeesByMonth
+);
 
+// Get summary of specific employee
+router.get(
+  "/admin/timesheet/summary",
+  verifyToken,
+  timesheetController.getSummaryByEmail
+);
 
-// =========================================================
-// ADMIN ROUTES
-// =========================================================
+// Get all employee summaries for month
+router.get(
+  "/admin/timesheet/summaries",
+  verifyToken,
+  timesheetController.getAllEmployeeMonthlySummaries
+);
 
-// Get summary of specific employee (admin)
-router.get("/admin/summary-by-email", verifyToken, getSummaryByEmail);
-
-// Get all employees who filled timesheets for given month/year
-router.get("/admin/filled-employees", verifyToken, getFilledEmployeesByMonth);
-
-// Get all employees’ summaries for given month/year
-router.get("/admin/all-summaries", verifyToken, getAllEmployeeMonthlySummaries);
-
-
-// =========================================================
 module.exports = router;

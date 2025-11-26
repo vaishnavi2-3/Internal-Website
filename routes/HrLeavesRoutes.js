@@ -11,6 +11,7 @@ const {
   updateHrStatus,
   getWeeklyAnalytics,
   cleanInvalidFiles,
+  approveLeaveByEmployeeId,
   rejectLeave 
 } = require("../controllers/HrLeavesController");
 
@@ -49,6 +50,8 @@ router.put("/hr/verify/employee/:employeeId", verifyLeave);
 // WEEKLY ANALYTICS
 // =====================
 router.get("/analytics/weekly", getWeeklyAnalytics);
+router.put("/leave/approve/:employeeId", approveLeaveByEmployeeId);
+
 
 // =====================
 // CLEAN INVALID PATHS

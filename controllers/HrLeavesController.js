@@ -4,6 +4,7 @@ const HrLeave = require("../models/Hrleaves");
 const Leave = require("../models/leave");
 const { BlobServiceClient } = require("@azure/storage-blob");
 const { createLeaveForEmployee } = require("../services/leaveService");
+const { applyLeaveToTimesheet } = require("../controllers/timesheetController");
 
 const blobService = BlobServiceClient.fromConnectionString(
   process.env.AZURE_STORAGE_CONNECTION_STRING
@@ -13,22 +14,40 @@ const containerClient = blobService.getContainerClient(
   process.env.AZURE_CONTAINER_NAME
 );
 
+
+
 // =========================
-// APPLY LEAVE
+// APPLY LEAVE (AUTO FETCH DEPT & DESIGNATION)
+// =========================
+const ProfessionalDetails = require("../models/professionalDetails");
+
+// =========================
+// APPLY LEAVE (AUTO FETCH + FIX AUTO DOWNLOAD)
 // =========================
 exports.applyLeave = async (req, res) => {
   try {
     const {
       employeeId,
       employeeName,
-      employeeDepartment,
-      employeeDesignation,
       fromDate,
       toDate,
       leaveType,
       reason,
     } = req.body;
 
+    // 1️⃣ Fetch department & designation automatically
+    const prof = await ProfessionalDetails.findOne({ employeeId });
+
+    if (!prof) {
+      return res.status(404).json({
+        msg: "Professional details not found for this employee",
+      });
+    }
+
+    const employeeDepartment = prof.department;
+    const employeeDesignation = prof.designation;
+
+    // 2️⃣ File upload with FIX for auto-download
     let fileData = null;
 
     if (req.file) {
@@ -39,7 +58,14 @@ exports.applyLeave = async (req, res) => {
         Date.now() + "-" + req.file.originalname.replace(/\s+/g, "_");
 
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-      await blockBlobClient.upload(fileBuffer, fileBuffer.length);
+
+      // ⚠️ FIX: Prevent auto download → open inline
+      await blockBlobClient.upload(fileBuffer, fileBuffer.length, {
+        blobHTTPHeaders: {
+          blobContentType: req.file.mimetype,
+          blobContentDisposition: "inline"  // 👈 FIX HERE
+        },
+      });
 
       fileData = {
         path: blockBlobClient.url,
@@ -49,10 +75,13 @@ exports.applyLeave = async (req, res) => {
       fs.unlinkSync(localFilePath);
     }
 
+    // 3️⃣ Calculate days applied
     const start = new Date(fromDate);
     const end = new Date(toDate);
-    const daysApplied = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    const daysApplied =
+      Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
 
+    // 4️⃣ Create leave record
     const result = await createLeaveForEmployee({
       employeeId,
       employeeName,
@@ -72,7 +101,6 @@ exports.applyLeave = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
-
 // ================================
 // GET ALL HR LEAVES
 // ================================
@@ -336,6 +364,47 @@ exports.updateHrStatus = async (req, res) => {
 
   } catch (err) {
     return res.status(500).json({ error: err.message });
+  }
+};
+// ================================
+// APPROVE LEAVE BY EMPLOYEE ID
+// ================================
+exports.approveLeaveByEmployeeId = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    // Get the latest pending leave for this employee
+    const latestLeave = await HrLeave.findOne({
+      employeeId,
+      status: "Pending"
+    }).sort({ createdAt: -1 });
+
+    if (!latestLeave) {
+      return res.status(404).json({ msg: "No pending leave found for this employee" });
+    }
+
+    // Approve HR Leave
+    latestLeave.status = "Approved";
+    latestLeave.verified = 1;
+    await latestLeave.save();
+
+    // Approve in Employee Leave collection
+    const updatedEmployeeLeave = await Leave.findOneAndUpdate(
+      { employeeId },
+      { $set: { status: "Approved" } },
+      { new: true, sort: { createdAt: -1 } }
+    );
+
+    return res.json({
+      msg: "Leave approved successfully for employee",
+      employeeId,
+      hrLeave: latestLeave,
+      employeeLeave: updatedEmployeeLeave
+    });
+
+  } catch (error) {
+    console.error("Approve Leave Error:", error);
+    return res.status(500).json({ msg: error.message });
   }
 };
 
