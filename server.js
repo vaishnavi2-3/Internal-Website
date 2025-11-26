@@ -67,6 +67,9 @@ app.use("/api/trainings", trainingRoutes);
 app.use("/api/certifications", certificationRoutes);
 app.use("/api/hrleaves", require("./routes/HrLeavesRoutes"));
 app.use("/api", jobRoutes);
+app.use("/api/hr", require("./routes/hrDashboardRoutes"));        // HR Dashboard APIs
+app.use("/api/birthdays", require("./routes/birthdayRoutes"));                    // Birthdays of this week
+
 
 
 //console.log("serevr");

@@ -86,5 +86,25 @@ exports.addHoliday = async (req, res) => {
     res.status(500).json({ msg: "Server Error", error: error.message });
   }
 };
+exports.getHRUpcomingHolidays = async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-// 🔹 Seed (one-time) from static JSON
+    const nextWeek = new Date();
+    nextWeek.setDate(today.getDate() + 7);
+    nextWeek.setHours(23, 59, 59, 999);
+
+    const upcoming = await PublicHoliday.find({
+      date: { $gte: today, $lte: nextWeek }
+    }).sort({ date: 1 });
+
+    res.status(200).json({
+      msg: "Upcoming holidays for HR dashboard (next 7 days)",
+      count: upcoming.length,
+      holidays: upcoming,
+    });
+  } catch (error) {
+    res.status(500).json({ msg: "Server Error", error: error.message });
+  }
+};

@@ -4,9 +4,13 @@ const {
   addMultipleHolidays,
   addHoliday,
  getAllHolidays,
- getHolidaysByMonth
+ getHolidaysByMonth,
+ getHRUpcomingHolidays
 
 } = require("../controllers/holidayController");
+const { verifyToken } = require("../middleware/authMiddleware");
+const roleCheck = require("../middleware/roleCheck");
+
 
 // 🔹 GET all holidays
 router.get("/", getAllHolidays);
@@ -16,5 +20,12 @@ router.post("/add", addHoliday);
 
 router.post("/bulk", addMultipleHolidays);
 router.get("/:month/:year", getHolidaysByMonth);
+router.get(
+  "/hr",
+  // verifyToken,
+  // roleCheck("HR", "Manager", "Admin"),
+  getHRUpcomingHolidays
+);
+
 
 module.exports = router;

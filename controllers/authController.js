@@ -28,6 +28,9 @@ const { email, password, role } = req.body;
     if (role !== employee.role) {
   return res.status(403).json({ msg: "You are not allowed to login with this role" });
 }
+employee.lastLoginAt = new Date();
+employee.loginCount = (employee.loginCount || 0) + 1;
+await employee.save();
 
 
     // 🔐 Generate JWT

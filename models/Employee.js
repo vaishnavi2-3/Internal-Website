@@ -26,6 +26,9 @@ roles: {
   enum: ["employee", "hr", "manager", "admin"],
   default: ["employee"]
 },
+  loginCount: { type: Number, default: 0 },
+  lastLoginAt: { type: Date },
+
   resetToken: { type: String },
 resetTokenExpiry: { type: Date }
 
