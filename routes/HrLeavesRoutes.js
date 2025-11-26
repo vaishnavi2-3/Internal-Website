@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const upload = require("../middleware/upload");
+const { verifyToken } = require("../middleware/authMiddleware");
+
 
 const {
   applyLeave,
@@ -12,6 +14,7 @@ const {
   getWeeklyAnalytics,
   cleanInvalidFiles,
   approveLeaveByEmployeeId,
+  approveLeaveByLeaveId,
   rejectLeave 
 } = require("../controllers/HrLeavesController");
 
@@ -19,7 +22,7 @@ const {
 // =====================
 // EMPLOYEE APPLY LEAVE
 // =====================
-router.post("/apply", upload.single("file"), applyLeave);
+router.post("/apply",verifyToken, upload.single("file"), applyLeave);
 
 // =====================
 // HR FETCH ALL LEAVES
@@ -29,17 +32,17 @@ router.get("/hr", getAllHrLeaves);
 // =====================
 // MANAGER APPROVE/REJECT (Employee ID)
 // =====================
-router.put("/manager/employee/:employeeId", managerAction);
+router.put("/manager/employee/:leaveId",verifyToken, managerAction);
 
 // =====================
 // HR ADD REASON (Employee ID)
 // =====================
-router.put("/hr/reason/employee/:employeeId", addHRReason);
+router.put("/hr/reason/employee/:leaveId",verifyToken, addHRReason);
 
 // =====================
 // HR UPDATE STATUS (Employee ID)
 // =====================
-router.put("/hr/status/employee/:employeeId", updateHrStatus);
+router.put("/hr/status/employee/:employeeId",verifyToken, updateHrStatus);
 
 //=====================
 // HR VERIFY LEAVE (Employee ID)
@@ -50,14 +53,16 @@ router.put("/hr/verify/employee/:employeeId", verifyLeave);
 // WEEKLY ANALYTICS
 // =====================
 router.get("/analytics/weekly", getWeeklyAnalytics);
-router.put("/leave/approve/:employeeId", approveLeaveByEmployeeId);
+router.put("/leave/approve/:employeeId",verifyToken, approveLeaveByEmployeeId);
+router.put("/leave/approve/:leaveId",verifyToken, approveLeaveByLeaveId);
+
 
 
 // =====================
 // CLEAN INVALID PATHS
 // =====================
 router.get("/admin/cleanup-invalid-files", cleanInvalidFiles);
-router.put("/reject/:employeeId", rejectLeave);
+router.put("/reject/:leaveId",verifyToken, rejectLeave);
 
 
 module.exports = router;

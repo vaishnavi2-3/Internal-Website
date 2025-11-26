@@ -26,16 +26,14 @@ const ProfessionalDetails = require("../models/professionalDetails");
 // =========================
 exports.applyLeave = async (req, res) => {
   try {
-    const {
-      employeeId,
-      employeeName,
-      fromDate,
-      toDate,
-      leaveType,
-      reason,
-    } = req.body;
+    // 👍 1. Auto fetch logged-in employee details
+    const employeeId = req.user.employeeId;  
+    const employeeName = req.user.name;
+    const officialEmail = req.user.email;
 
-    // 1️⃣ Fetch department & designation automatically
+    const { fromDate, toDate, leaveType, reason } = req.body;
+
+    // 2. Fetch professional details
     const prof = await ProfessionalDetails.findOne({ employeeId });
 
     if (!prof) {
@@ -45,9 +43,9 @@ exports.applyLeave = async (req, res) => {
     }
 
     const employeeDepartment = prof.department;
-    const employeeDesignation = prof.designation;
+    const employeeDesignation = prof.role;
 
-    // 2️⃣ File upload with FIX for auto-download
+    // 3. File upload
     let fileData = null;
 
     if (req.file) {
@@ -59,11 +57,10 @@ exports.applyLeave = async (req, res) => {
 
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
-      // ⚠️ FIX: Prevent auto download → open inline
       await blockBlobClient.upload(fileBuffer, fileBuffer.length, {
         blobHTTPHeaders: {
           blobContentType: req.file.mimetype,
-          blobContentDisposition: "inline"  // 👈 FIX HERE
+          blobContentDisposition: "inline"
         },
       });
 
@@ -75,13 +72,13 @@ exports.applyLeave = async (req, res) => {
       fs.unlinkSync(localFilePath);
     }
 
-    // 3️⃣ Calculate days applied
+    // 4. Calculate days
     const start = new Date(fromDate);
     const end = new Date(toDate);
     const daysApplied =
       Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
 
-    // 4️⃣ Create leave record
+    // 5. Create leave record
     const result = await createLeaveForEmployee({
       employeeId,
       employeeName,
@@ -92,10 +89,12 @@ exports.applyLeave = async (req, res) => {
       daysApplied,
       leaveType,
       reason,
+      officialEmail,
       file: fileData,
     });
 
     return res.status(201).json(result);
+
   } catch (error) {
     console.error("Apply Leave Error:", error);
     return res.status(500).json({ error: error.message });
@@ -118,25 +117,24 @@ exports.getAllHrLeaves = async (req, res) => {
 // ================================
 exports.managerAction = async (req, res) => {
   try {
-    const employeeId = req.params.employeeId;
+    const { leaveId } = req.params;
     const { managerStatus, managerReason } = req.body;
 
-    const latestLeave = await HrLeave.findOne({ employeeId })
-      .sort({ createdAt: -1 });
+    const leave = await HrLeave.findById(leaveId);
 
-    if (!latestLeave) {
-      return res.status(404).json({ message: "No leave found for employee" });
+    if (!leave) {
+      return res.status(404).json({ message: "Leave not found" });
     }
 
-    latestLeave.managerStatus = managerStatus;
-    latestLeave.managerReason = managerReason;
-
-    await latestLeave.save();
+    leave.managerStatus = managerStatus;
+    leave.managerReason = managerReason;
+    await leave.save();
 
     return res.json({
       message: "Manager updated leave",
-      data: latestLeave,
+      data: leave,
     });
+
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -147,23 +145,23 @@ exports.managerAction = async (req, res) => {
 // ================================
 exports.addHRReason = async (req, res) => {
   try {
-    const employeeId = req.params.employeeId;
+    const { leaveId } = req.params;  
     const { hrReason } = req.body;
 
-    const latestLeave = await HrLeave.findOne({ employeeId })
-      .sort({ createdAt: -1 });
+    const leave = await HrLeave.findById(leaveId);
 
-    if (!latestLeave) {
-      return res.status(404).json({ message: "No leave found" });
+    if (!leave) {
+      return res.status(404).json({ message: "Leave not found" });
     }
 
-    latestLeave.hrReason = hrReason;
-    await latestLeave.save();
+    leave.hrReason = hrReason;
+    await leave.save();
 
     return res.json({
-      message: "HR reason updated",
-      updated: latestLeave,
+      message: "HR reason updated successfully",
+      data: leave,
     });
+
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -208,7 +206,7 @@ exports.addHRReason = async (req, res) => {
 // };
 exports.verifyLeave = async (req, res) => {
   try {
-    const employeeId = req.params.employeeId;
+    const { leaveId } = req.params;
 
     const latestLeave = await HrLeave.findOne({
       employeeId,
@@ -224,9 +222,9 @@ exports.verifyLeave = async (req, res) => {
     await latestLeave.save();
 
     const updatedEmployeeLeave = await Leave.findOneAndUpdate(
-      { employeeId },
+      { hrLeaveId: leaveId },
       { $set: { status: "Approved" } },
-      { new: true, sort: { createdAt: -1 } }
+      { new: true }
     );
 
     // ⭐ Auto create timesheet leave entries
@@ -252,31 +250,34 @@ exports.verifyLeave = async (req, res) => {
 // ================================
 exports.rejectLeave = async (req, res) => {
   try {
-    const employeeId = req.params.employeeId;
+    const { leaveId } = req.params;
     const { hrReason } = req.body;
 
-    const latestLeave = await HrLeave.findOne({
-      employeeId,
-      status: "Pending"
-    }).sort({ createdAt: -1 });
+    const leave = await HrLeave.findById(leaveId);
 
-    if (!latestLeave) {
-      return res.status(404).json({ message: "No pending leave found" });
+    if (!leave) {
+      return res.status(404).json({ message: "Leave not found" });
     }
 
-    latestLeave.status = "Rejected";
-    latestLeave.hrReason = hrReason || "";
-    await latestLeave.save();
+    if (leave.status !== "Pending") {
+      return res.status(400).json({ message: "Leave is already processed" });
+    }
 
+    // Update HR leave
+    leave.status = "Rejected";
+    leave.hrReason = hrReason || "";
+    await leave.save();
+
+    // Update employee leave
     const updatedEmployeeLeave = await Leave.findOneAndUpdate(
-      { hrLeaveId: latestLeave._id },
+      { hrLeaveId: leaveId },
       { $set: { status: "Rejected" } },
       { new: true }
     );
 
     res.json({
       message: "Leave rejected",
-      hrLeave: latestLeave,
+      hrLeave: leave,
       employeeLeave: updatedEmployeeLeave
     });
 
@@ -405,6 +406,44 @@ exports.approveLeaveByEmployeeId = async (req, res) => {
   } catch (error) {
     console.error("Approve Leave Error:", error);
     return res.status(500).json({ msg: error.message });
+  }
+};
+// ================================
+// APPROVE LEAVE BY LEAVE ID
+// ================================
+exports.approveLeaveByLeaveId = async (req, res) => {
+  try {
+    const { leaveId } = req.params;
+
+    const leave = await HrLeave.findById(leaveId);
+
+    if (!leave) {
+      return res.status(404).json({ msg: "Leave not found" });
+    }
+
+    if (leave.status !== "Pending") {
+      return res.status(400).json({ msg: "Leave is already processed" });
+    }
+
+    // Approve HR Leave
+    leave.status = "Approved";
+    leave.verified = 1;
+    await leave.save();
+
+    // Update employee leave record
+    await Leave.findOneAndUpdate(
+      { hrLeaveId: leaveId },
+      { $set: { status: "Approved" } },
+      { new: true }
+    );
+
+    res.json({
+      msg: "Leave approved by Leave ID",
+      leave,
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
