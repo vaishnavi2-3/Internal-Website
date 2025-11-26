@@ -6,7 +6,6 @@ const sendEmail = async ({ to, subject, html }) => {
       throw new Error(`Invalid recipient email: ${to}`);
     }
 
-    // Debug to confirm env variables are loading (Vercel)
     console.log("EMAIL DEBUG:", {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS ? "OK" : "MISSING",
@@ -14,10 +13,12 @@ const sendEmail = async ({ to, subject, html }) => {
     });
 
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true, // SSL
       auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
+        user: process.env.EMAIL_USER,  // your Google Workspace email
+        pass: process.env.EMAIL_PASS,  // App Password
       },
     });
 
