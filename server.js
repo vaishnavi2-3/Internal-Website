@@ -69,6 +69,7 @@ app.use("/api/hrleaves", require("./routes/HrLeavesRoutes"));
 app.use("/api", jobRoutes);
 app.use("/api/hr", require("./routes/hrDashboardRoutes"));        // HR Dashboard APIs
 app.use("/api/birthdays", require("./routes/birthdayRoutes"));                    // Birthdays of this week
+app.use("/api/employees", require("./routes/employeeRoutes"));
 
 
 
