@@ -110,8 +110,7 @@ exports.createEmployeeByHR = async (req, res) => {
     const tempPassword = generatePassword();
 
     const employee = await Employee.create({
-      firstName: fullName.split(" ")[0],
-      lastName: fullName.split(" ")[1] || "",
+      fullName,          // 👈 USE THIS
       email,
       role,
       password: tempPassword,
@@ -119,29 +118,29 @@ exports.createEmployeeByHR = async (req, res) => {
       mustChangePassword: true,
     });
 
-await sendEmail({
-  to: email,
-  subject: "Your Employee Login Credentials",
-  html: `
-    <h3>Hello ${fullName},</h3>
-    <p>Your employee account has been successfully created.</p>
+    await sendEmail({
+      to: email,
+      subject: "Your Employee Login Credentials",
+      html: `
+        <h3>Hello ${fullName},</h3>
+        <p>Your employee account has been successfully created.</p>
 
-    <p><b>Email:</b> ${email}</p>
-    <p><b>Temporary Password:</b> ${tempPassword}</p>
+        <p><b>Email:</b> ${email}</p>
+        <p><b>Temporary Password:</b> ${tempPassword}</p>
 
-    <p>You can log in using the link below:</p>
-    <p>
-      <a href="https://employe-connect.dhatvibs.com/login"
-         style="color: #1a73e8; font-weight: bold;">
-         Click here to login
-      </a>
-    </p>
+        <p>You can log in using the link below:</p>
+        <p>
+          <a href="https://employe-connect.dhatvibs.com/login"
+            style="color: #1a73e8; font-weight: bold;">
+            Click here to login
+          </a>
+        </p>
 
-    <p>Please login and reset your password immediately.</p>
-    <br>
-    <p>Thank you,<br>HR Team</p>
-  `,
-});
+        <p>Please login and reset your password immediately.</p>
+        <br>
+        <p>Thank you,<br>HR Team</p>
+      `,
+    });
 
     res.status(201).json({ msg: "Employee created & credentials sent." });
 

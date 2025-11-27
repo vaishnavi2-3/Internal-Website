@@ -12,15 +12,30 @@ const sendEmail = async ({ to, subject, html }) => {
       client_url: process.env.CLIENT_URL
     });
 
+    // const transporter = nodemailer.createTransport({
+    //   host: "smtp.gmail.com",
+    //   port: 465,
+    //   secure: true, // SSL
+    //   auth: {
+    //     user: process.env.EMAIL_USER,  // your Google Workspace email
+    //     pass: process.env.EMAIL_PASS,  // App Password
+    //   },
+    // });
     const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true, // SSL
-      auth: {
-        user: process.env.EMAIL_USER,  // your Google Workspace email
-        pass: process.env.EMAIL_PASS,  // App Password
-      },
-    });
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+transporter.verify((err) => {
+  if (err) console.error("EMAIL ERROR:", err);
+  else console.log("SMTP Ready");
+});
+
 
     const mailOptions = {
       from: `"Dhatvibs HR" <${process.env.EMAIL_USER}>`,

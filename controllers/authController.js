@@ -210,40 +210,67 @@ exports.loginEmployee = async (req, res) => {
   try {
     const { email, password, role } = req.body;
 
+    // 1️⃣ Find employee
     const employee = await Employee.findOne({ email }).select("+password");
-    if (!employee) return res.status(404).json({ msg: "Invalid email or password" });
+    if (!employee)
+      return res.status(404).json({ msg: "Invalid email or password" });
 
+    // 2️⃣ Validate password
     const isMatch = await bcrypt.compare(password, employee.password);
-    if (!isMatch) return res.status(401).json({ msg: "Invalid email or password" });
+    if (!isMatch)
+      return res.status(401).json({ msg: "Invalid email or password" });
 
+    // 3️⃣ Validate role
     if (role !== employee.role)
       return res.status(403).json({ msg: "You are not allowed to login with this role" });
 
+    // 4️⃣ Update login stats
     employee.lastLoginAt = new Date();
     employee.loginCount = employee.loginCount + 1;
     await employee.save();
 
-    const token = jwt.sign(
-      { email: employee.email, employeeId: employee._id, role: employee.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    // 5️⃣ Generate token
+const token = jwt.sign(
+  {
+    employeeId: employee._id,
+    email: employee.email,     // official email
+    fullName: employee.fullName,
+    role: employee.role,
+  },
+  process.env.JWT_SECRET,
+  { expiresIn: "1d" }
+);
 
     const mustChangePassword = employee.mustChangePassword;
+
+    // 🔎 Fetch other details linked by officialEmail
+    const personalDetails = await PersonalDetails.findOne({ officialEmail: employee.email });
+    const educationDetails = await Education.findOne({ officialEmail: employee.email });
+    const professionalDetails = await ProfessionalDetails.findOne({ officialEmail: employee.email });
 
     res.status(200).json({
       msg: "Login successful",
       token,
+      officialEmail: employee.email,        // 🔥 send separately
+      fullName: employee.fullName,
+      role: employee.role,
+
       forceChangePassword: mustChangePassword,
+
+      mustFillPersonalDetails: !personalDetails,
+      mustFillEducationDetails: !educationDetails,
+      mustFillProfessionalDetails: !professionalDetails,
+
       employee: {
-        firstName: employee.firstName,
-        lastName: employee.lastName,
+        fullName: employee.fullName,
         email: employee.email,
         role: employee.role,
+        employeeId: employee._id,
       },
     });
 
   } catch (err) {
+    console.error("Login error:", err);
     res.status(500).json({ msg: "Server Error", error: err.message });
   }
 };
@@ -273,12 +300,8 @@ exports.handlePassword = async (req, res) => {
 
       return res.json({ msg: "Reset link sent to email" });
     }
-     console.log("SMTP DEBUG:", {
-  user: process.env.EMAIL_USER,
-  pass: process.env.EMAIL_PASS ? "Loaded" : "Missing"
-});
 
-    // ---------------- RESET PASSWORD ----------------
+    // ---------------- RESET PASSWORD VIA TOKEN ----------------
     if (token && newPassword && confirmPassword) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const employee = await Employee.findById(decoded.id).select("+password");
@@ -294,13 +317,14 @@ exports.handlePassword = async (req, res) => {
       return res.json({ msg: "Password reset successful" });
     }
 
-    // ---------------- CHANGE PASSWORD (normal) ----------------
+    // ---------------- CHANGE PASSWORD (After login) ----------------
     if (email && currentPassword && newPassword && confirmPassword) {
       const employee = await Employee.findOne({ email }).select("+password");
       if (!employee) return res.status(404).json({ msg: "User not found" });
 
       const isMatch = await bcrypt.compare(currentPassword, employee.password);
-      if (!isMatch) return res.status(400).json({ msg: "Current password incorrect" });
+      if (!isMatch)
+        return res.status(400).json({ msg: "Current password incorrect" });
 
       if (newPassword !== confirmPassword)
         return res.status(400).json({ msg: "Passwords do not match" });

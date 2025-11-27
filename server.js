@@ -12,6 +12,7 @@ const { setupSwagger } = require("./config/swagger"); // adjust path if needed
 // cron.schedule("* * * * *", () => {
 //   console.log("⏰ Cron Job Running Every Minute!");
 // });
+console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "Loaded" : "Not Loaded");
 
 
 // ✅ Import routes
