@@ -58,4 +58,6 @@ const professionalDetailsSchema = new Schema(
 );
 professionalDetailsSchema.index({ officialEmail: 1 });
 
-module.exports = mongoose.model("ProfessionalDetails", professionalDetailsSchema);
+module.exports =
+  mongoose.models.ProfessionalDetails ||
+  mongoose.model("ProfessionalDetails", professionalDetailsSchema);

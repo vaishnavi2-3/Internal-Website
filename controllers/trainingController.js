@@ -1,157 +1,140 @@
-const Training = require("../models/Training");
+const ProfessionalDetails = require("../models/ProfessionalDetails");
+const TrainingTask = require("../models/TrainingTask");
 
-// ✅ Create a new training assignment
-exports.createTraining = async (req, res) => {
+// ============================================
+// Fetch employee details for auto-fill
+// ============================================
+exports.getEmployeeDetails = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    const prof = await ProfessionalDetails.findOne({ employeeId });
+
+    if (!prof) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    // Get manager name from experience or fallback
+    const managerName =
+      prof.experiences?.length > 0 ? prof.experiences[0].managerName : "";
+
+    return res.status(200).json({
+      employeeName: prof.officialEmail.split("@")[0],
+      department: prof.department,
+      managerName: managerName
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Server Error", error: err });
+  }
+};
+
+// ===============================================
+// Create HR Assigned Training Task
+// ===============================================
+exports.createTrainingTask = async (req, res) => {
   try {
     const {
-      trainingTitle,
+      employeeId,
       level,
-      department,
-      trainerOrManager,
       fromDate,
       toDate,
-      employees,
+      mode,
+      duration
     } = req.body;
 
-    if (
-      !trainingTitle ||
-      !level ||
-      !department ||
-      !trainerOrManager ||
-      !fromDate ||
-      !toDate
-    ) {
-      return res.status(400).json({ message: "All fields are required" });
+    // Fetch employee info from ProfessionalDetails
+    const prof = await ProfessionalDetails.findOne({ employeeId });
+
+    if (!prof) {
+      return res.status(404).json({ message: "Employee not found" });
     }
 
-    if (!employees || !employees.length) {
-      return res.status(400).json({ message: "At least one employee required" });
+    // ==============================
+    // AUTO-FILL MANAGER NAME
+    // Ignore whatever frontend sends
+    // ==============================
+    let managerName = "";
+
+    if (prof.managerName) {
+      managerName = prof.managerName;
+    } else if (prof.experiences && prof.experiences.length > 0) {
+      managerName = prof.experiences[0].managerName;
     }
 
-    const training = new Training({
-      trainingTitle,
-      level,
+    const employeeName = prof.officialEmail.split("@")[0];
+    const department = prof.department;
+
+    // Create new training task
+    const newTask = new TrainingTask({
+      employeeId,
+      employeeName,
       department,
-      trainerOrManager,
+      managerName,
+      level,
       fromDate,
       toDate,
-      employees,
+      mode,
+      duration
     });
 
-    const saved = await training.save();
-    res.status(201).json({ message: "✅ Training assigned successfully", data: saved });
-  } catch (error) {
-    console.error("Error creating training:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
+    await newTask.save();
 
-// ✅ Get all trainings
-exports.getAllTrainings = async (req, res) => {
-  try {
-    const trainings = await Training.find().sort({ createdAt: -1 });
-    res.status(200).json(trainings);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-// ✅ Get training by ID
-exports.getTrainingById = async (req, res) => {
-  try {
-    const training = await Training.findById(req.params.id);
-    if (!training) return res.status(404).json({ message: "Training not found" });
-    res.status(200).json(training);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-// ✅ Delete training
-exports.deleteTraining = async (req, res) => {
-  try {
-    const deleted = await Training.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ message: "Training not found" });
-    res.status(200).json({ message: "Training deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-// ✅ Monthly training summary
-exports.getMonthlyStats = async (req, res) => {
-  try {
-    const stats = await Training.aggregate([
-      {
-        $group: {
-          _id: { $month: "$fromDate" },
-          month: { $first: { $month: "$fromDate" } },
-          totalTrainings: { $sum: 1 },
-          totalEmployees: { $sum: { $size: "$employees" } },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]);
-
-    const monthNames = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-
-    const formatted = monthNames.map((m, i) => {
-      const match = stats.find((s) => s._id === i + 1);
-      return {
-        month: m,
-        totalTrainings: match ? match.totalTrainings : 0,
-        totalEmployees: match ? match.totalEmployees : 0,
-      };
+    return res.status(201).json({
+      message: "Training Task Created Successfully",
+      task: newTask
     });
 
-    res.status(200).json(formatted);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+  } catch (err) {
+    return res.status(500).json({
+      message: "Server Error",
+      error: err.message
+    });
   }
 };
 
-// ✅ Department-wise training share
-exports.getDepartmentStats = async (req, res) => {
+// ===============================================
+// Fetch All Tasks for Employee Dashboard
+// ===============================================
+exports.getEmployeeTasks = async (req, res) => {
   try {
-    const stats = await Training.aggregate([
-      {
-        $group: {
-          _id: "$department",
-          totalTrainings: { $sum: 1 },
-          totalEmployees: { $sum: { $size: "$employees" } },
-        },
-      },
-      {
-        $project: {
-          name: "$_id",
-          value: "$totalEmployees",
-          _id: 0,
-        },
-      },
-    ]);
+    const { employeeId } = req.params;
 
-    res.status(200).json(stats);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    const tasks = await TrainingTask.find({ employeeId });
+
+    return res.status(200).json({
+      message: "Tasks fetched successfully",
+      tasks
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Server Error", error: err });
   }
 };
 
-// ✅ Training status summary (ongoing, completed, upcoming)
-exports.getTrainingStatusSummary = async (req, res) => {
+// ===============================================
+// HR Updates an Existing Training Task
+// ===============================================
+exports.updateTrainingTask = async (req, res) => {
   try {
-    const today = new Date();
+    const { taskId } = req.params;
 
-    const [ongoing, completed, upcoming] = await Promise.all([
-      Training.countDocuments({ fromDate: { $lte: today }, toDate: { $gte: today } }),
-      Training.countDocuments({ toDate: { $lt: today } }),
-      Training.countDocuments({ fromDate: { $gt: today } }),
-    ]);
+    const updatedTask = await TrainingTask.findByIdAndUpdate(
+      taskId,
+      req.body,
+      { new: true }
+    );
 
-    res.status(200).json({ ongoing, completed, upcoming });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    if (!updatedTask) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    return res.status(200).json({
+      message: "Task updated successfully",
+      updatedTask
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Server Error", error: err });
   }
 };

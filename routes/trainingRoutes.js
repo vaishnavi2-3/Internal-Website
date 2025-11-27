@@ -1,23 +1,23 @@
 const express = require("express");
 const router = express.Router();
+
 const {
-  createTraining,
-  getAllTrainings,
-  getTrainingById,
-  deleteTraining,
-  getMonthlyStats,
-  getDepartmentStats,
-  getTrainingStatusSummary,
+  getEmployeeDetails,
+  createTrainingTask,
+  getEmployeeTasks,
+  updateTrainingTask
 } = require("../controllers/trainingController");
 
-router.post("/", createTraining);
-router.get("/", getAllTrainings);
-router.get("/:id", getTrainingById);
-router.delete("/:id", deleteTraining);
+// Auto-fill manager, dept, employeeName
+router.get("/employee/:employeeId/details", getEmployeeDetails);
 
-// Analytics
-router.get("/analytics/monthly", getMonthlyStats);
-router.get("/analytics/department", getDepartmentStats);
-router.get("/analytics/status", getTrainingStatusSummary);
+// HR creates task
+router.post("/create", createTrainingTask);
+
+// Employee dashboard fetch
+router.get("/employee/:employeeId", getEmployeeTasks);
+
+// HR updates task
+router.put("/update/:taskId", updateTrainingTask);
 
 module.exports = router;
