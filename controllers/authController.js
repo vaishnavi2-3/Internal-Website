@@ -222,20 +222,24 @@ exports.loginEmployee = async (req, res) => {
 
     // 3️⃣ Validate role
 // 3️⃣ Validate role (supports CAPITAL, small, mixed case)
-const allowedRoles = ["employee", "manager", "admin", "hr"];
+// const allowedRoles = ["employee", "manager", "admin", "hr"];
 
-const incomingRole = String(role).trim().toLowerCase();
-const dbRole = String(employee.role).trim().toLowerCase();
+// const incomingRole = String(role).trim().toLowerCase();
+// const dbRole = String(employee.role).trim().toLowerCase();
 
-// Check if database role is valid
-if (!allowedRoles.includes(dbRole)) {
-  return res.status(403).json({ msg: "Role is not allowed in system" });
-}
+// // Check if database role is valid
+// if (!allowedRoles.includes(dbRole)) {
+//   return res.status(403).json({ msg: "Role is not allowed in system" });
+// }
 
-// Compare frontend role with db role
-if (incomingRole !== dbRole) {
+// // Compare frontend role with db role
+// if (incomingRole !== dbRole) {
+//   return res.status(403).json({ msg: "You are not allowed to login with this role" });
+// }
+if (role && role.toLowerCase() !== employee.role.toLowerCase()) {
   return res.status(403).json({ msg: "You are not allowed to login with this role" });
 }
+
 
     // 4️⃣ Update login stats
     employee.lastLoginAt = new Date();
