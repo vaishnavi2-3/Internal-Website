@@ -107,11 +107,13 @@ const employeeSchema = new mongoose.Schema({
     trim: true
   },
 
-  role: { 
-    type: String, 
-    enum: ["Employee", "Manager", "HR", "Admin"], 
-    default: "Employee" 
-  },
+role: {
+  type: String,
+  trim: true,
+  lowercase: true,     // convert incoming text to lowercase
+  enum: ["employee", "manager", "hr", "admin"], // allowed values
+  default: "employee"
+},
 
   password: { type: String, required: true, select: false },
   confirmPassword: { type: String, select: false },
