@@ -18,7 +18,7 @@ const autoCloseExpiredJobs = async () => {
 // ➤ Create new job post (HR)
 exports.createJob = async (req, res) => {
   try {
-    const {
+    let {
       jobTitle,
       department,
       JobType,
@@ -34,14 +34,25 @@ exports.createJob = async (req, res) => {
       deadline,
     } = req.body;
 
-    // Basic validation – can be extended
+    // ✅ Convert SINGLE value → ARRAY automatically
+    if (location && !Array.isArray(location)) {
+      location = [location];
+    }
+
+    if (responsibilities && !Array.isArray(responsibilities)) {
+      responsibilities = [responsibilities];
+    }
+
+    // ✅ Final validation (after conversion)
     if (
       !jobTitle ||
       !department ||
       !JobType ||
-      !location?.length ||
+      !location ||
+      location.length === 0 ||
       !roleOverview ||
-      !responsibilities?.length ||
+      !responsibilities ||
+      responsibilities.length === 0 ||
       !preferredSkills ||
       !experience ||
       !qualification ||
@@ -49,7 +60,9 @@ exports.createJob = async (req, res) => {
       !contactOrEmail ||
       !deadline
     ) {
-      return res.status(400).json({ message: "All required fields must be filled" });
+      return res.status(400).json({
+        message: "All required fields must be filled correctly",
+      });
     }
 
     const newJob = await Job.create({
@@ -57,9 +70,9 @@ exports.createJob = async (req, res) => {
       department,
       JobType,
       jobCategory,
-      location,
+      location,            // ✅ always stored as ARRAY
       roleOverview,
-      responsibilities,
+      responsibilities,   // ✅ always stored as ARRAY
       preferredSkills,
       experience,
       qualification,
@@ -80,6 +93,7 @@ exports.createJob = async (req, res) => {
     });
   }
 };
+
 
 // ➤ Get all jobs (Public + HR) – auto close expired first
 exports.getAllJobs = async (req, res) => {
