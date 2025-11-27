@@ -1,4 +1,4 @@
-const ProfessionalDetails = require("../models/ProfessionalDetails");
+const ProfessionalDetails = require("../models/professionalDetails");
 const TrainingTask = require("../models/TrainingTask");
 
 // ============================================
