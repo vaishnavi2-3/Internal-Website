@@ -13,7 +13,7 @@ const JobSchema = new mongoose.Schema(
     experience: { type: String, required: true },
     qualification: { type: String, required: true },
     salary: { type: String, required: true },
-    Contact: { type: String, required: true },
+    contactOrEmail: { type: String, required: true },
     deadline: { type: Date, required: true },
     status: {
       type: String,

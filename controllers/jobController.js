@@ -30,7 +30,7 @@ exports.createJob = async (req, res) => {
       experience,
       qualification,
       salary,
-      Contact,
+      contactOrEmail,
       deadline,
     } = req.body;
 
@@ -46,7 +46,7 @@ exports.createJob = async (req, res) => {
       !experience ||
       !qualification ||
       !salary ||
-      !Contact ||
+      !contactOrEmail ||
       !deadline
     ) {
       return res.status(400).json({ message: "All required fields must be filled" });
@@ -64,7 +64,7 @@ exports.createJob = async (req, res) => {
       experience,
       qualification,
       salary,
-      Contact,
+      contactOrEmail,
       deadline,
     });
 
