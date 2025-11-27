@@ -44,7 +44,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // For form-data support
 app.use(cors({
-  origin: "https://employe-connect.dhatvibs.com/login", // or your frontend URL
+  origin: "https://employe-connect.dhatvibs.com", // or your frontend URL
   methods: "GET,POST,PUT,DELETE",
   credentials: true
 }));
