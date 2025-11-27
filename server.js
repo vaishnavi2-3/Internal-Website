@@ -44,13 +44,17 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // For form-data support
 app.use(cors({
-  origin: "https://employe-connect.dhatvibs.com", // or your frontend URL
-  methods: "GET,POST,PUT,DELETE",
+  origin: [
+    "https://employe-connect.dhatvibs.com",
+    "https://internal-website-rho-vercel.app",
+    "http://localhost:3000"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
 
 
-app.use(cors());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // if (!fs.existsSync(uploadDir)) {
 //   fs.mkdirSync(uploadDir, { recursive: true });

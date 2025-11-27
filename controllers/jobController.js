@@ -21,6 +21,70 @@ exports.createJob = async (req, res) => {
     let {
       jobTitle,
       department,
+
+      // ✅ frontend sends jobType
+      jobType,
+      JobType,
+
+      jobCategory,
+      location,
+      roleOverview,
+      responsibilities,
+      preferredSkills,
+      experience,
+      qualification,
+      salary,
+
+      // ✅ frontend sends contact
+      contact,
+      contactOrEmail,
+
+      deadline
+    } = req.body;
+
+    // ✅ FIELD NORMALIZATION
+    JobType = JobType || jobType;
+    contactOrEmail = contactOrEmail || contact;
+
+    // ✅ SINGLE → ARRAY CONVERSION
+    location = Array.isArray(location)
+      ? location
+      : location
+      ? [location]
+      : [];
+
+    responsibilities = Array.isArray(responsibilities)
+      ? responsibilities
+      : responsibilities
+      ? [responsibilities]
+      : [];
+
+    // ✅ DATE CONVERSION
+    deadline = new Date(deadline);
+
+    // ✅ FINAL VALIDATION
+    if (
+      !jobTitle ||
+      !department ||
+      !JobType ||
+      !location.length ||
+      !roleOverview ||
+      !responsibilities.length ||
+      !preferredSkills ||
+      !experience ||
+      !qualification ||
+      !salary ||
+      !contactOrEmail ||
+      !deadline
+    ) {
+      return res.status(400).json({
+        message: "All required fields must be filled correctly"
+      });
+    }
+
+    const newJob = await Job.create({
+      jobTitle,
+      department,
       JobType,
       jobCategory,
       location,
@@ -31,65 +95,19 @@ exports.createJob = async (req, res) => {
       qualification,
       salary,
       contactOrEmail,
-      deadline,
-    } = req.body;
-
-    // ✅ Convert SINGLE value → ARRAY automatically
-    if (location && !Array.isArray(location)) {
-      location = [location];
-    }
-
-    if (responsibilities && !Array.isArray(responsibilities)) {
-      responsibilities = [responsibilities];
-    }
-
-    // ✅ Final validation (after conversion)
-    if (
-      !jobTitle ||
-      !department ||
-      !JobType ||
-      !location ||
-      location.length === 0 ||
-      !roleOverview ||
-      !responsibilities ||
-      responsibilities.length === 0 ||
-      !preferredSkills ||
-      !experience ||
-      !qualification ||
-      !salary ||
-      !contactOrEmail ||
-      !deadline
-    ) {
-      return res.status(400).json({
-        message: "All required fields must be filled correctly",
-      });
-    }
-
-    const newJob = await Job.create({
-      jobTitle,
-      department,
-      JobType,
-      jobCategory,
-      location,            // ✅ always stored as ARRAY
-      roleOverview,
-      responsibilities,   // ✅ always stored as ARRAY
-      preferredSkills,
-      experience,
-      qualification,
-      salary,
-      contactOrEmail,
-      deadline,
+      deadline
     });
 
     res.status(201).json({
-      message: "Job posted successfully",
-      job: newJob,
+      message: "✅ Job posted successfully",
+      job: newJob
     });
+
   } catch (error) {
-    console.error("Error creating job:", error);
+    console.error("❌ Error creating job:", error);
     res.status(500).json({
       message: "Server Error",
-      error: error.message,
+      error: error.message
     });
   }
 };
