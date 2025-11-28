@@ -220,22 +220,6 @@ exports.loginEmployee = async (req, res) => {
     if (!isMatch)
       return res.status(401).json({ msg: "Invalid email or password" });
 
-    // 3️⃣ Validate role
-// 3️⃣ Validate role (supports CAPITAL, small, mixed case)
-// const allowedRoles = ["employee", "manager", "admin", "hr"];
-
-// const incomingRole = String(role).trim().toLowerCase();
-// const dbRole = String(employee.role).trim().toLowerCase();
-
-// // Check if database role is valid
-// if (!allowedRoles.includes(dbRole)) {
-//   return res.status(403).json({ msg: "Role is not allowed in system" });
-// }
-
-// // Compare frontend role with db role
-// if (incomingRole !== dbRole) {
-//   return res.status(403).json({ msg: "You are not allowed to login with this role" });
-// }
 if (role && role.toLowerCase() !== employee.role.toLowerCase()) {
   return res.status(403).json({ msg: "You are not allowed to login with this role" });
 }
@@ -298,8 +282,10 @@ exports.handlePassword = async (req, res) => {
   try {
     const { email, currentPassword, newPassword, confirmPassword, token } = req.body;
 
-    // ---------------- FORGOT PASSWORD ----------------
-    if (email && !currentPassword && !newPassword) {
+    // ============================================================
+    // 1️⃣ FORGOT PASSWORD — Send Reset Email
+    // ============================================================
+    if (email && !currentPassword && !newPassword && !token) {
       const employee = await Employee.findOne({ email });
       if (!employee) return res.status(404).json({ msg: "User not found" });
 
@@ -312,20 +298,29 @@ exports.handlePassword = async (req, res) => {
       await sendEmail({
         to: email,
         subject: "Reset Your Password",
-        html: `<p>Click below to reset:</p> <a href="${resetLink}">${resetLink}</a>`,
+        html: `<p>Click below to reset your password:</p><a href="${resetLink}">${resetLink}</a>`,
       });
 
       return res.json({ msg: "Reset link sent to email" });
     }
 
-    // ---------------- RESET PASSWORD VIA TOKEN ----------------
+    // ============================================================
+    // 2️⃣ RESET PASSWORD USING TOKEN (Forgot password flow)
+    // ============================================================
     if (token && newPassword && confirmPassword) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      let decoded;
+      try {
+        decoded = jwt.verify(token, process.env.JWT_SECRET);
+      } catch (e) {
+        return res.status(400).json({ msg: "Invalid or expired token" });
+      }
+
       const employee = await Employee.findById(decoded.id).select("+password");
       if (!employee) return res.status(404).json({ msg: "User not found" });
 
-      if (newPassword !== confirmPassword)
+      if (newPassword !== confirmPassword) {
         return res.status(400).json({ msg: "Passwords do not match" });
+      }
 
       employee.password = newPassword;
       employee.mustChangePassword = false;
@@ -334,18 +329,29 @@ exports.handlePassword = async (req, res) => {
       return res.json({ msg: "Password reset successful" });
     }
 
-    // ---------------- CHANGE PASSWORD (After login) ----------------
+    // ============================================================
+    // 3️⃣ CHANGE PASSWORD (Email + currentPassword + newPassword)
+    // ============================================================
     if (email && currentPassword && newPassword && confirmPassword) {
+
       const employee = await Employee.findOne({ email }).select("+password");
       if (!employee) return res.status(404).json({ msg: "User not found" });
 
+      // Validate current password
       const isMatch = await bcrypt.compare(currentPassword, employee.password);
       if (!isMatch)
         return res.status(400).json({ msg: "Current password incorrect" });
 
+      // New password must match confirm password
       if (newPassword !== confirmPassword)
-        return res.status(400).json({ msg: "Passwords do not match" });
+        return res.status(400).json({ msg: "New password & confirm password do not match" });
 
+      // Prevent using old password
+      const isSame = await bcrypt.compare(newPassword, employee.password);
+      if (isSame)
+        return res.status(400).json({ msg: "New password cannot be same as old password" });
+
+      // Save new password
       employee.password = newPassword;
       employee.mustChangePassword = false;
       await employee.save();
@@ -353,6 +359,9 @@ exports.handlePassword = async (req, res) => {
       return res.json({ msg: "Password changed successfully" });
     }
 
+    // ============================================================
+    // ❌ DEFAULT — No valid flow matched
+    // ============================================================
     return res.status(400).json({ msg: "Invalid request" });
 
   } catch (err) {

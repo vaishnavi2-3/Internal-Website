@@ -50,16 +50,23 @@ exports.savePersonalDetails = async (req, res) => {
 
 
     // Convert children array
-    if (body.children) {
-      try {
-        body.children =
-          typeof body.children === "string"
-            ? JSON.parse(body.children)
-            : body.children;
-      } catch (err) {
-        body.children = [];
-      }
+if (body.children) {
+  try {
+    // Case 1 → JSON array like ["a","b"]
+    if (body.children.trim().startsWith("[")) {
+      body.children = JSON.parse(body.children);
     }
+    // Case 2 → comma separated values: a,b,c
+    else {
+      body.children = body.children
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean);
+    }
+  } catch {
+    body.children = [];
+  }
+}
 
     // Marriage certificate optional
 // Marriage certificate optional
