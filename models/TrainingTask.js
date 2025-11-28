@@ -1,5 +1,10 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
+// const examSchema = new Schema({
+//   title: { type: String, required: true },
+//   percentage: { type: Number, required: true },
+// }, { _id: true });
+
 
 const trainingTaskSchema = new Schema(
   {
@@ -8,7 +13,7 @@ const trainingTaskSchema = new Schema(
     department: { type: String, required: true },
     managerName: { type: String, default: "" },
 
-    trainingTitle: { type: String, required: true },
+    trainingTitle: { type: String },
 
     level: {
       type: String,
@@ -25,7 +30,10 @@ const trainingTaskSchema = new Schema(
       required: true
     },
 
-    duration: { type: String, required: true }
+    duration: { type: String, required: true },
+    exams: { type: String },           // e.g. "React Fundamentals Test"
+    marks: { type: String }            // e.g. "82%"
+
   },
   { timestamps: true }
 );

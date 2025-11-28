@@ -454,6 +454,66 @@ exports.approveLeaveByLeaveId = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+exports.getAbsentEmployeesToday = async (req, res) => {
+  try {
+    const now = new Date();
+    const today = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    today.setHours(0, 0, 0, 0);
+
+    const allEmployees = await ProfessionalDetails.find().select("employeeId employeeName department");
+
+    const absentLeaves = await HrLeave.find({
+      status: "Approved",
+      fromDate: { $lte: today },
+      toDate: { $gte: today }
+    }).select("employeeId");
+
+    const absentEmployeeIds = new Set(absentLeaves.map(l => l.employeeId));
+
+    const absentEmployees = allEmployees.filter(emp =>
+      absentEmployeeIds.has(emp.employeeId)
+    );
+
+    return res.json({
+      date: today.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }),
+      absentCount: absentEmployees.length,
+      absentEmployees
+    });
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+exports.getPresentEmployeesToday = async (req, res) => {
+  try {
+    const now = new Date();
+    const today = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    today.setHours(0, 0, 0, 0);
+
+    const allEmployees = await ProfessionalDetails.find().select("employeeId employeeName department");
+
+    const absentLeaves = await HrLeave.find({
+      status: "Approved",
+      fromDate: { $lte: today },
+      toDate: { $gte: today }
+    }).select("employeeId");
+
+    const absentIds = new Set(absentLeaves.map(l => l.employeeId));
+
+    const presentEmployees = allEmployees.filter(emp =>
+      !absentIds.has(emp.employeeId)
+    );
+
+    return res.json({
+      date: today.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }),
+      presentCount: presentEmployees.length,
+      presentEmployees
+    });
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
 
 
 

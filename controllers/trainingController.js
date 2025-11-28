@@ -91,7 +91,10 @@ exports.createTrainingTask = async (req, res) => {
       fromDate,
       toDate,
       mode,
-      duration
+      duration,
+     exams: req.body.exams,
+     marks: req.body.marks
+
     });
 
     await newTask.save();
@@ -146,6 +149,67 @@ exports.updateTrainingTask = async (req, res) => {
       message: "Task updated successfully",
       updatedTask
     });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Server Error", error: err.message });
+  }
+};
+exports.addExam = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const { exams, marks } = req.body;
+
+    const task = await TrainingTask.findById(taskId);
+    if (!task) return res.status(404).json({ message: "Task not found" });
+
+    // Directly overwrite values (no push!)
+    task.exams = exams;
+    task.marks = marks;
+
+    await task.save();
+
+    return res.json({
+      message: "Exam added successfully",
+      task
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Server Error", error: err.message });
+  }
+};
+
+exports.updateExam = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const { exams, marks } = req.body;
+
+    const task = await TrainingTask.findById(taskId);
+    if (!task) return res.status(404).json({ message: "Task not found" });
+
+    if (exams !== undefined) task.exams = exams;
+    if (marks !== undefined) task.marks = marks;
+
+    await task.save();
+
+    return res.json({ message: "Exam updated", task });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Server Error", error: err.message });
+  }
+};
+exports.deleteExam = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+
+    const task = await TrainingTask.findById(taskId);
+    if (!task) return res.status(404).json({ message: "Task not found" });
+
+    task.exams = null;
+    task.marks = null;
+
+    await task.save();
+
+    return res.json({ message: "Exam deleted", task });
 
   } catch (err) {
     return res.status(500).json({ message: "Server Error", error: err.message });
