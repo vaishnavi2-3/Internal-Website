@@ -29,6 +29,7 @@ const trainingTaskSchema = new Schema(
   },
   { timestamps: true }
 );
+mongoose.deleteModel(/TrainingTask/i);
 
 module.exports =
   mongoose.models.TrainingTask ||

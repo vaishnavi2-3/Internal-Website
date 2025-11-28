@@ -25,16 +25,16 @@ exports.getEmployeeDetails = async (req, res) => {
     return res.status(200).json({
       employeeName: prof.officialEmail.split("@")[0],
       department: prof.department,
-      managerName: managerName
+      managerName
     });
 
   } catch (err) {
-    return res.status(500).json({ message: "Server Error", error: err });
+    return res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
 
 // ===============================================
-// Create HR Assigned Training Task (camelCase)
+// Create Training Task (camelCase)
 // ===============================================
 exports.createTrainingTask = async (req, res) => {
   try {
@@ -48,7 +48,7 @@ exports.createTrainingTask = async (req, res) => {
       duration
     } = req.body;
 
-    // Fetch employee profile details
+    // Fetch employee profile
     const prof = await ProfessionalDetails.findOne({ employeeId });
 
     if (!prof) {
@@ -59,7 +59,7 @@ exports.createTrainingTask = async (req, res) => {
     let managerName = "";
     if (prof.managerName) {
       managerName = prof.managerName;
-    } else if (prof.experiences && prof.experiences.length > 0) {
+    } else if (prof.experiences?.length > 0) {
       managerName = prof.experiences[0].managerName || "";
     }
 
@@ -87,10 +87,7 @@ exports.createTrainingTask = async (req, res) => {
     });
 
   } catch (err) {
-    return res.status(500).json({
-      message: "Server Error",
-      error: err.message
-    });
+    return res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
 
@@ -109,12 +106,12 @@ exports.getEmployeeTasks = async (req, res) => {
     });
 
   } catch (err) {
-    return res.status(500).json({ message: "Server Error", error: err });
+    return res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
 
 // ===============================================
-// HR Updates an Existing Training Task
+// Update Training Task (PATCH / PUT)
 // ===============================================
 exports.updateTrainingTask = async (req, res) => {
   try {
@@ -136,6 +133,6 @@ exports.updateTrainingTask = async (req, res) => {
     });
 
   } catch (err) {
-    return res.status(500).json({ message: "Server Error", error: err });
+    return res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
