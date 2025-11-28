@@ -32,12 +32,8 @@ const JobSchema = new mongoose.Schema(
     jobTitle: { type: String, required: true },
     department: { type: String, required: true },
 
-    // ✅ normalize naming
-    JobType: { type: String, required: true },
+    jobType: { type: String, required: true },
 
-    jobCategory: { type: String, default: "" },
-
-    // ✅ FIXED ARRAY VALIDATION
     location: {
       type: [String],
       required: true
@@ -45,7 +41,6 @@ const JobSchema = new mongoose.Schema(
 
     roleOverview: { type: String, required: true },
 
-    // ✅ FIXED ARRAY VALIDATION
     responsibilities: {
       type: [String],
       required: true
@@ -56,7 +51,6 @@ const JobSchema = new mongoose.Schema(
     qualification: { type: String, required: true },
     salary: { type: String, required: true },
 
-    // ✅ normalize naming
     contactOrEmail: { type: String, required: true },
 
     deadline: { type: Date, required: true },

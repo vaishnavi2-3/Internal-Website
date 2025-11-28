@@ -21,12 +21,7 @@ exports.createJob = async (req, res) => {
     let {
       jobTitle,
       department,
-
-      // ✅ frontend sends jobType
       jobType,
-      JobType,
-
-      jobCategory,
       location,
       roleOverview,
       responsibilities,
@@ -34,39 +29,23 @@ exports.createJob = async (req, res) => {
       experience,
       qualification,
       salary,
-
-      // ✅ frontend sends contact
-      contact,
       contactOrEmail,
-
       deadline
     } = req.body;
 
-    // ✅ FIELD NORMALIZATION
-    JobType = JobType || jobType;
-    contactOrEmail = contactOrEmail || contact;
-
-    // ✅ SINGLE → ARRAY CONVERSION
-    location = Array.isArray(location)
-      ? location
-      : location
-      ? [location]
-      : [];
-
+    // ✅ Ensure arrays (single OR multiple)
+    location = Array.isArray(location) ? location : [location];
     responsibilities = Array.isArray(responsibilities)
       ? responsibilities
-      : responsibilities
-      ? [responsibilities]
-      : [];
+      : [responsibilities];
 
-    // ✅ DATE CONVERSION
     deadline = new Date(deadline);
 
-    // ✅ FINAL VALIDATION
+    // ✅ Validation
     if (
       !jobTitle ||
       !department ||
-      !JobType ||
+      !jobType ||
       !location.length ||
       !roleOverview ||
       !responsibilities.length ||
@@ -85,8 +64,7 @@ exports.createJob = async (req, res) => {
     const newJob = await Job.create({
       jobTitle,
       department,
-      JobType,
-      jobCategory,
+      jobType,
       location,
       roleOverview,
       responsibilities,
@@ -102,7 +80,6 @@ exports.createJob = async (req, res) => {
       message: "✅ Job posted successfully",
       job: newJob
     });
-
   } catch (error) {
     console.error("❌ Error creating job:", error);
     res.status(500).json({
@@ -111,6 +88,7 @@ exports.createJob = async (req, res) => {
     });
   }
 };
+
 
 
 // ➤ Get all jobs (Public + HR) – auto close expired first
