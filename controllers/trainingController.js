@@ -23,9 +23,9 @@ exports.getEmployeeDetails = async (req, res) => {
     }
 
     return res.status(200).json({
-      EmployeeName: prof.officialEmail.split("@")[0],
-      Department: prof.department,
-      ManagerName: managerName
+      employeeName: prof.officialEmail.split("@")[0],
+      department: prof.department,
+      managerName: managerName
     });
 
   } catch (err) {
@@ -34,51 +34,49 @@ exports.getEmployeeDetails = async (req, res) => {
 };
 
 // ===============================================
-// Create HR Assigned Training Task
+// Create HR Assigned Training Task (camelCase)
 // ===============================================
 exports.createTrainingTask = async (req, res) => {
   try {
     const {
-      EmployeeId,
-      TrainingTitle,
-      Level,
-      FromDate,
-      ToDate,
-      Mode,
-      Duration
+      employeeId,
+      trainingTitle,
+      level,
+      fromDate,
+      toDate,
+      mode,
+      duration
     } = req.body;
 
-    // Fetch employee info
-    const prof = await ProfessionalDetails.findOne({ employeeId: EmployeeId });
+    // Fetch employee profile details
+    const prof = await ProfessionalDetails.findOne({ employeeId });
 
     if (!prof) {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    // Auto-fill ManagerName
-    let ManagerName = "";
-
+    // Auto-fill managerName
+    let managerName = "";
     if (prof.managerName) {
-      ManagerName = prof.managerName;
+      managerName = prof.managerName;
     } else if (prof.experiences && prof.experiences.length > 0) {
-      ManagerName = prof.experiences[0].managerName || "";
+      managerName = prof.experiences[0].managerName || "";
     }
 
-    const EmployeeName = prof.officialEmail.split("@")[0];
-    const Department = prof.department;
+    const employeeName = prof.officialEmail.split("@")[0];
+    const department = prof.department;
 
     const newTask = new TrainingTask({
-      EmployeeId,
-      EmployeeName,
-      Department,
-      ManagerName,
-
-      TrainingTitle,
-      Level,
-      FromDate,
-      ToDate,
-      Mode,
-      Duration
+      employeeId,
+      employeeName,
+      department,
+      managerName,
+      trainingTitle,
+      level,
+      fromDate,
+      toDate,
+      mode,
+      duration
     });
 
     await newTask.save();
@@ -103,7 +101,7 @@ exports.getEmployeeTasks = async (req, res) => {
   try {
     const { employeeId } = req.params;
 
-    const tasks = await TrainingTask.find({ EmployeeId: employeeId });
+    const tasks = await TrainingTask.find({ employeeId });
 
     return res.status(200).json({
       message: "Tasks fetched successfully",

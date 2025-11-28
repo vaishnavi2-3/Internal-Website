@@ -3,29 +3,29 @@ const { Schema } = mongoose;
 
 const trainingTaskSchema = new Schema(
   {
-    EmployeeId: { type: String, required: true },
-    EmployeeName: { type: String, required: true },
-    Department: { type: String, required: true },
-    ManagerName: { type: String, default: "" },
+    employeeId: { type: String, required: true },
+    employeeName: { type: String, required: true },
+    department: { type: String, required: true },
+    managerName: { type: String, default: "" },
 
-    TrainingTitle: { type: String, required: true },
+    trainingTitle: { type: String, required: true },
 
-    Level: {
+    level: {
       type: String,
       enum: ["Beginner", "Intermediate", "Advanced"],
       required: true
     },
 
-    FromDate: { type: Date, required: true },
-    ToDate: { type: Date, required: true },
+    fromDate: { type: Date, required: true },
+    toDate: { type: Date, required: true },
 
-    Mode: {
+    mode: {
       type: String,
       enum: ["Online", "Offline", "Hybrid"],
       required: true
     },
 
-    Duration: { type: String, required: true }
+    duration: { type: String, required: true }
   },
   { timestamps: true }
 );
