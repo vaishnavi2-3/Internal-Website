@@ -14,8 +14,16 @@ exports.getEmployeeDetails = async (req, res) => {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    let managerName = "";
+    // Safe employeeName extraction
+    let employeeName = "Unknown";
+    if (prof.officialEmail) {
+      employeeName = prof.officialEmail.split("@")[0];
+    } else if (prof.employeeName) {
+      employeeName = prof.employeeName;
+    }
 
+    // Safe managerName
+    let managerName = "";
     if (prof.managerName) {
       managerName = prof.managerName;
     } else if (prof.experiences?.length > 0) {
@@ -23,8 +31,8 @@ exports.getEmployeeDetails = async (req, res) => {
     }
 
     return res.status(200).json({
-      employeeName: prof.officialEmail.split("@")[0],
-      department: prof.department,
+      employeeName,
+      department: prof.department || "",
       managerName
     });
 
@@ -55,7 +63,15 @@ exports.createTrainingTask = async (req, res) => {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    // Auto-fill managerName
+    // SAFE employeeName
+    let employeeName = "Unknown";
+    if (prof.officialEmail) {
+      employeeName = prof.officialEmail.split("@")[0];
+    } else if (prof.employeeName) {
+      employeeName = prof.employeeName;
+    }
+
+    // SAFE managerName
     let managerName = "";
     if (prof.managerName) {
       managerName = prof.managerName;
@@ -63,8 +79,7 @@ exports.createTrainingTask = async (req, res) => {
       managerName = prof.experiences[0].managerName || "";
     }
 
-    const employeeName = prof.officialEmail.split("@")[0];
-    const department = prof.department;
+    const department = prof.department || "";
 
     const newTask = new TrainingTask({
       employeeId,
