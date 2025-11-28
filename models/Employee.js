@@ -118,6 +118,8 @@ role: {
   confirmPassword: { type: String, select: false },
 
   mustChangePassword: { type: Boolean, default: false },
+  hasLoggedIn: { type: Boolean, default: false },
+
   loginCount: { type: Number, default: 0 },
   lastLoginAt: Date,
 });

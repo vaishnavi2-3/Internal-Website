@@ -226,9 +226,19 @@ if (role && role.toLowerCase() !== employee.role.toLowerCase()) {
 
 
     // 4️⃣ Update login stats
-    employee.lastLoginAt = new Date();
-    employee.loginCount = employee.loginCount + 1;
-    await employee.save();
+// 4️⃣ Track first-time login
+const isFirstLogin = !employee.hasLoggedIn;
+
+// Update login stats
+employee.lastLoginAt = new Date();
+employee.loginCount = employee.loginCount + 1;
+
+// Mark employee as "has logged in" on FIRST login only
+if (isFirstLogin) {
+  employee.hasLoggedIn = true;
+}
+
+await employee.save();
 
     // 5️⃣ Generate token
 const token = jwt.sign(
@@ -363,6 +373,20 @@ exports.handlePassword = async (req, res) => {
     // ❌ DEFAULT — No valid flow matched
     // ============================================================
     return res.status(400).json({ msg: "Invalid request" });
+
+  } catch (err) {
+    return res.status(500).json({ msg: "Server Error", error: err.message });
+  }
+};
+exports.getAllLoggedInEmployees = async (req, res) => {
+  try {
+    const employees = await Employee.find({ loginCount: { $gt: 0 } })
+      .select("fullName email role employeeId lastLoginAt loginCount");
+
+    return res.json({
+      totalLoggedIn: employees.length,
+      employees
+    });
 
   } catch (err) {
     return res.status(500).json({ msg: "Server Error", error: err.message });
