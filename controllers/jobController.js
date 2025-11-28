@@ -122,6 +122,43 @@ exports.getJobById = async (req, res) => {
   }
 };
 
+//✅ ✅ FULL JOB UPDATE (ADMIN EDIT PAGE)
+exports.updateJob = async (req, res) => {
+  try {
+    let updatedData = req.body;
+
+    if (updatedData.location) {
+      updatedData.location = Array.isArray(updatedData.location)
+        ? updatedData.location
+        : [updatedData.location];
+    }
+
+    if (updatedData.responsibilities) {
+      updatedData.responsibilities = Array.isArray(
+        updatedData.responsibilities
+      )
+        ? updatedData.responsibilities
+        : [updatedData.responsibilities];
+    }
+
+    const updatedJob = await Job.findByIdAndUpdate(
+      req.params.id,
+      updatedData,
+      { new: true }
+    );
+
+    if (!updatedJob)
+      return res.status(404).json({ message: "Job not found" });
+
+    res.status(200).json({
+      message: "✅ Job updated successfully",
+      job: updatedJob,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
 // ➤ Update job status (HR marks as Closed / Active)
 exports.updateJobStatus = async (req, res) => {
   try {
