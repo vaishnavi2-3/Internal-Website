@@ -25,7 +25,8 @@ const router = express.Router();
 
 const {
   loginEmployee,
-  handlePassword
+  handlePassword,
+  getAllLoggedInEmployees
 } = require("../controllers/authController");
 
 // ------------------------
@@ -37,6 +38,7 @@ router.post("/login", loginEmployee);
 
 // Password operations (Forgot / Reset / Change)
 router.post("/password", handlePassword);
+router.get("/employees/logged-in/total", getAllLoggedInEmployees);
 
 module.exports = router;
 
