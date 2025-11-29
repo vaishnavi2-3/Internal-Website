@@ -6,11 +6,14 @@ const {
   createTrainingTask,
   getEmployeeTasks,
   updateTrainingTask,
-    addExam,
+  addExam,
   updateExam,
   deleteExam,
-    getAllAssignedEmployees
-
+  getAllAssignedEmployees,
+  assignTasksToDepartment,
+  getAllDepartments,
+  getEmployeesByDepartment,
+  getEmployeeByDepartmentAndId
 
 } = require("../controllers/trainingController");
 
@@ -29,10 +32,16 @@ router.post("/:taskId/add-exam", addExam);
 
 // HR updates exam (marks or title)
 router.put("/:taskId/update-exam/:examId", updateExam);
+router.post("/assign/department", assignTasksToDepartment);
+
 
 // HR deletes exam
 router.delete("/:taskId/delete-exam/:examId", deleteExam);
 router.get("/assigned/employees", getAllAssignedEmployees);
+router.get("/departments", getAllDepartments);
+router.get("/departments/:departmentName", getEmployeesByDepartment);
+// GET single employee from department
+router.get("/departments/:departmentName/:employeeId",getEmployeeByDepartmentAndId);
 
 
 module.exports = router;

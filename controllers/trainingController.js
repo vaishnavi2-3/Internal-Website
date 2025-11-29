@@ -497,3 +497,162 @@ exports.getAllAssignedEmployees = async (req, res) => {
     return res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+exports.assignTasksToDepartment = async (req, res) => {
+  try {
+    const {
+      department,
+      trainingTitle,
+      level,
+      fromDate,
+      toDate,
+      mode,
+      duration,
+      exams,
+      marks
+    } = req.body;
+
+    if (!department) {
+      return res.status(400).json({ message: "Department is required" });
+    }
+
+    // Get employees in the department
+    const employees = await ProfessionalDetails.find({ department });
+
+    if (!employees.length) {
+      return res.status(404).json({ message: "No employees found in this department" });
+    }
+
+    let assignedTasks = [];
+
+    // Loop through each employee
+    for (const emp of employees) {
+
+      let employeeName = emp.employeeName || (emp.officialEmail?.split("@")[0]) || "Unknown";
+
+      let managerName = emp.managerName || emp.experiences?.[0]?.managerName || "";
+
+      const task = await TrainingTask.create({
+        employeeId: emp.employeeId,
+        employeeName,
+        department: emp.department,
+        managerName,
+        trainingTitle,
+        level,
+        fromDate,
+        toDate,
+        mode,
+        duration,
+        exams,
+        marks
+      });
+
+      assignedTasks.push(task);
+    }
+
+    return res.status(201).json({
+      message: "Training Tasks Assigned to Department Employees Successfully",
+      totalAssigned: assignedTasks.length,
+      tasks: assignedTasks
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Server Error", error: err.message });
+  }
+};
+
+
+// ===============================================
+// Get ALL Unique Departments
+// ===============================================
+exports.getAllDepartments = async (req, res) => {
+  try {
+    const departments = await ProfessionalDetails.distinct("department");
+
+    if (!departments || departments.length === 0) {
+      return res.status(404).json({ message: "No departments found" });
+    }
+
+    return res.status(200).json({
+      message: "Departments fetched successfully",
+      departments
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      message: "Server Error",
+      error: err.message
+    });
+  }
+};
+exports.getEmployeesByDepartment = async (req, res) => {
+  try {
+    const { departmentName } = req.params;
+
+    const employees = await ProfessionalDetails.find({ department: departmentName })
+      .select("employeeId employeeName officialEmail department managerName experiences");
+
+    if (!employees.length) {
+      return res.status(404).json({
+        message: `No employees found in ${departmentName}`
+      });
+    }
+
+    const formatted = employees.map(emp => {
+      let name = emp.employeeName ||
+                 (emp.officialEmail ? emp.officialEmail.split("@")[0] : "Unknown");
+
+      let managerName = emp.managerName ||
+                        (emp.experiences?.length ? emp.experiences[0].managerName : "");
+
+      return {
+        employeeId: emp.employeeId,
+        employeeName: name,
+        department: emp.department,
+        managerName
+      };
+    });
+
+    return res.status(200).json({
+      message: "Employees fetched successfully",
+      employees: formatted
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Server Error", error: err.message });
+  }
+};
+exports.getEmployeeByDepartmentAndId = async (req, res) => {
+  try {
+    const { departmentName, employeeId } = req.params;
+
+    const emp = await ProfessionalDetails.findOne({
+      department: departmentName,
+      employeeId
+    }).select("employeeId employeeName officialEmail department managerName experiences");
+
+    if (!emp) {
+      return res.status(404).json({
+        message: `Employee ${employeeId} not found in department ${departmentName}`
+      });
+    }
+
+    let employeeName = emp.employeeName ||
+                       (emp.officialEmail ? emp.officialEmail.split("@")[0] : "Unknown");
+
+    let managerName = emp.managerName ||
+                      (emp.experiences?.length ? emp.experiences[0].managerName : "");
+
+    return res.status(200).json({
+      message: "Employee fetched successfully",
+      employee: {
+        employeeId: emp.employeeId,
+        employeeName,
+        department: emp.department,
+        managerName
+      }
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Server Error", error: err.message });
+  }
+};

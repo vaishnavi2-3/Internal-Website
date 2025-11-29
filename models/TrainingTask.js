@@ -1,13 +1,20 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
-// const examSchema = new Schema({
-//   title: { type: String, required: true },
-//   percentage: { type: Number, required: true },
-// }, { _id: true });
+const examSchema = new Schema({
+  exam: { type: String, required: true },
+  marks: { type: String, required: true }
+});
 
+
+const { v4: uuidv4 } = require("uuid");
 
 const trainingTaskSchema = new Schema(
   {
+    _id: {
+      type: String,
+      default: uuidv4,   // 🔥 FIX: Ensure UUID string is used as _id
+    },
+
     employeeId: { type: String, required: true },
     employeeName: { type: String, required: true },
     department: { type: String, required: true },
@@ -31,12 +38,14 @@ const trainingTaskSchema = new Schema(
     },
 
     duration: { type: String, required: true },
-    exams: { type: String },           // e.g. "React Fundamentals Test"
-    marks: { type: String }            // e.g. "82%"
 
+    exams: { type: String },
+    marks: { type: String }
   },
   { timestamps: true }
 );
+
+// Prevent OverwriteModelError
 mongoose.deleteModel(/TrainingTask/i);
 
 module.exports =
