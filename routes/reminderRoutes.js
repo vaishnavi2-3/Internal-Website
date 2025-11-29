@@ -10,6 +10,6 @@ const {
 router.post("/add", addReminder);
 
 // 📅 Get all reminders for the current week for ONE employee
-router.get("/week/:employeeId", getWeeklyReminders);
+router.get("/week", getWeeklyReminders);
 
 module.exports = router;

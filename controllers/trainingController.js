@@ -215,3 +215,53 @@ exports.deleteExam = async (req, res) => {
     return res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+// ===============================================
+// Get All Employees Who Have Assigned Tasks
+// ===============================================
+exports.getAllAssignedEmployees = async (req, res) => {
+  try {
+    // Fetch unique employeeIds that have tasks
+    const employeesWithTasks = await TrainingTask.distinct("employeeId");
+
+    if (!employeesWithTasks || employeesWithTasks.length === 0) {
+      return res.status(404).json({ message: "No employees have assigned tasks" });
+    }
+
+    // Fetch employee professional details for those IDs
+    const employeeDetails = await ProfessionalDetails.find({
+      employeeId: { $in: employeesWithTasks }
+    }).select("employeeId department officialEmail managerName employeeName experiences role");
+
+    // Format safe employeeName
+    const result = employeeDetails.map(emp => {
+      let name = "Unknown";
+
+      if (emp.officialEmail) {
+        name = emp.officialEmail.split("@")[0];
+      } else if (emp.employeeName) {
+        name = emp.employeeName;
+      }
+
+      let managerName = emp.managerName || "";
+      if (!managerName && emp.experiences?.length > 0) {
+        managerName = emp.experiences[0].managerName || "";
+      }
+
+      return {
+        employeeId: emp.employeeId,
+        employeeName: name,
+        department: emp.department || "",
+        managerName,
+        role: emp.role || ""
+      };
+    });
+
+    return res.status(200).json({
+      message: "Employees with assigned tasks fetched successfully",
+      employees: result
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Server Error", error: err.message });
+  }
+};

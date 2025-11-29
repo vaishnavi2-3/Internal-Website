@@ -8,7 +8,9 @@ const {
   updateTrainingTask,
     addExam,
   updateExam,
-  deleteExam
+  deleteExam,
+    getAllAssignedEmployees
+
 
 } = require("../controllers/trainingController");
 
@@ -30,6 +32,7 @@ router.put("/:taskId/update-exam/:examId", updateExam);
 
 // HR deletes exam
 router.delete("/:taskId/delete-exam/:examId", deleteExam);
+router.get("/assigned/employees", getAllAssignedEmployees);
 
 
 module.exports = router;
