@@ -1,10 +1,12 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
-let uuidv4;
+const { randomUUID } = require("crypto");
 
-(async () => {
-  uuidv4 = (await import("uuid")).v4;
-})();
+// let uuidv4;
+
+// (async () => {
+//   uuidv4 = (await import("uuid")).v4;
+// })();
 
 const examSchema = new Schema({
   exam: { type: String, required: true },
@@ -17,8 +19,7 @@ const trainingTaskSchema = new Schema(
   {
     _id: {
       type: String,
-      default: uuidv4,   // 🔥 FIX: Ensure UUID string is used as _id
-    },
+    default: () => randomUUID()    },
 
     employeeId: { type: String, required: true },
     employeeName: { type: String, required: true },
