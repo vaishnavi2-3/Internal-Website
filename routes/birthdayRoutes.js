@@ -9,7 +9,7 @@ const roleCheck = require("../middleware/roleCheck");
 router.get(
   "/week",
   // verifyToken,
-  roleCheck("HR", "Manager", "Admin"),
+  // roleCheck("HR", "Manager", "Admin"),
   getBirthdaysThisWeek
 );
 

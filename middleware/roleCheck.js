@@ -1,12 +1,18 @@
-module.exports = (...allowedRoles) => {
+module.exports = function roleCheck(...allowedRoles) {
   return (req, res, next) => {
-    const userRole = req.user.role;
 
-    // If role is in allowed list → allow access
-    if (allowedRoles.includes(userRole)) {
-      return next();
+    if (!req.user) {
+      return res.status(401).json({ msg: "User not authenticated" });
     }
 
-    return res.status(403).json({ msg: "Access denied" });
+    if (!req.user.role) {
+      return res.status(400).json({ msg: "User role missing" });
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ msg: "You are not allowed to access this route" });
+    }
+
+    next();
   };
 };

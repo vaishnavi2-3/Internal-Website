@@ -1,15 +1,13 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
+const { v4: uuidv4 } = require("uuid");
+
 const examSchema = new Schema({
   exam: { type: String, required: true },
   marks: { type: String, required: true }
-});
+}, { _id: true });
 
 
-let uuidv4;
-(async () => {
-  uuidv4 = (await import("uuid")).v4;
-})();
 
 const trainingTaskSchema = new Schema(
   {
