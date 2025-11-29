@@ -15,8 +15,9 @@ const {
   cleanInvalidFiles,
   approveLeaveByEmployeeId,
   approveLeaveByLeaveId,
-  getAbsentEmployeesToday,
-  getPresentEmployeesToday,
+  // getAbsentEmployeesToday,
+  // getPresentEmployeesToday,
+  getTodayAttendanceSummary,
   rejectLeave 
 } = require("../controllers/HrLeavesController");
 
@@ -58,8 +59,9 @@ router.put("/hr/verify/employee/:leaveId", verifyToken,verifyLeave);
 router.get("/analytics/weekly", getWeeklyAnalytics);
 router.put("/leave/approve/:employeeId",verifyToken, approveLeaveByEmployeeId);
 router.put("/leave/approve/:leaveId",verifyToken, approveLeaveByLeaveId);
-router.get("/attendance/absent/today", getAbsentEmployeesToday);
-router.get("/attendance/present/today", getPresentEmployeesToday);
+// router.get("/attendance/absent/today", getAbsentEmployeesToday);
+// router.get("/attendance/present/today", getPresentEmployeesToday);
+router.get("/attendance/today-summary", getTodayAttendanceSummary);
 
 
 
