@@ -1,6 +1,10 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
-const { v4: uuidv4 } = require("uuid");
+let uuidv4;
+
+(async () => {
+  uuidv4 = (await import("uuid")).v4;
+})();
 
 const examSchema = new Schema({
   exam: { type: String, required: true },
