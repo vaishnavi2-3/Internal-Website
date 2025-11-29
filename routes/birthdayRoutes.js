@@ -8,7 +8,7 @@ const roleCheck = require("../middleware/roleCheck");
 // HR, Manager, Admin can see birthdays
 router.get(
   "/week",
-  verifyToken,
+  // verifyToken,
   roleCheck("HR", "Manager", "Admin"),
   getBirthdaysThisWeek
 );
