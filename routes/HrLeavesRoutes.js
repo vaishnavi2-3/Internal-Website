@@ -61,7 +61,7 @@ router.put("/leave/approve/:employeeId",verifyToken, approveLeaveByEmployeeId);
 router.put("/leave/approve/:leaveId",verifyToken, approveLeaveByLeaveId);
 // router.get("/attendance/absent/today", getAbsentEmployeesToday);
 // router.get("/attendance/present/today", getPresentEmployeesToday);
-router.get("/attendance/today-summary", getTodayAttendanceSummary);
+// router.get("/attendance/today-summary", getTodayAttendanceSummary);
 
 
 

@@ -31,6 +31,9 @@ const projectRoutes = require("./routes/projectTimelineRoutes");
 const trainingRoutes = require("./routes/trainingRoutes");
 const certificationRoutes = require("./routes/certificationRoutes");
 const jobRoutes = require("./routes/jobRoutes");
+const attendanceRoutes = require("./routes/attendanceRoutes");  // ✅ NEW
+const reminderRoutes = require("./routes/reminderRoutes");
+
 
 
 // serve uploaded files statically
@@ -88,6 +91,9 @@ app.use("/api/hr", require("./routes/hrDashboardRoutes"));        // HR Dashboar
 app.use("/api/birthdays", require("./routes/birthdayRoutes"));   // Birthdays of this week
 app.use("/api/employees", require("./routes/employeeRoutes"));
 app.use("/debug", require("./routes/debug"));
+app.use("/api/attendance", attendanceRoutes);   // ⭐ IMPORTANT
+app.use("/api/reminder", reminderRoutes);
+require("./cron/reminderCleaner");   // <-- ★ IMPORTANT
 
 
 
