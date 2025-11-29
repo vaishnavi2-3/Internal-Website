@@ -6,7 +6,10 @@ const examSchema = new Schema({
 });
 
 
-const { v4: uuidv4 } = require("uuid");
+let uuidv4;
+(async () => {
+  uuidv4 = (await import("uuid")).v4;
+})();
 
 const trainingTaskSchema = new Schema(
   {
