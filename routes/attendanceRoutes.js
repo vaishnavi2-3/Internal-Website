@@ -14,5 +14,6 @@ router.get("/attendance/monthly/:employeeId", getMonthlyAttendance);
 // ALL EMPLOYEES MONTHLY
 router.get("/attendance/monthly", getAllEmployeesMonthlyAttendance);
 router.get("/attendance/today-summary", getTodayAttendanceSummary);
+router.get("/monthly-all", getAllEmployeesMonthlyAttendance);
 
 module.exports = router;

@@ -1,66 +1,80 @@
+const Employee = require("../models/Employee");
 const PersonalDetails = require("../models/personalDetails");
 
 const getBirthdaysThisWeek = async (req, res) => {
   try {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const nextWeek = new Date(today);
+    const nextWeek = new Date();
     nextWeek.setDate(today.getDate() + 7);
-    nextWeek.setHours(23, 59, 59, 999);
 
-    const allEmployees = await PersonalDetails.find({
-      dateOfBirth: { $exists: true }
-    });
+    const employees = await Employee.find();
+    const personalDetails = await PersonalDetails.find();
 
-    const upcomingBirthdays = [];
+    const upcoming = [];
 
-    allEmployees.forEach(emp => {
-      if (!emp.dateOfBirth) return;
-
-      // 🔥 SAFE PARSING — always gets YYYY-MM-DD
-      const dobString = emp.dateOfBirth.toString().slice(0, 10);
-      const [year, month, day] = dobString.split("-");
-
-      // Create DOB for THIS year
-      let birthdayThisYear = new Date(
-        today.getFullYear(),
-        Number(month) - 1,
-        Number(day)
+    for (const emp of employees) {
+      const pd = personalDetails.find(
+        p => p.officialEmail === emp.email
       );
 
-      // If already passed → move to next year
-      if (birthdayThisYear < today) {
-        birthdayThisYear = new Date(
-          today.getFullYear() + 1,
-          Number(month) - 1,
-          Number(day)
-        );
+      if (!pd || !pd.dob) continue;
+
+      // -------- FIX: Parse the DOB string --------
+      let parts;
+
+      if (pd.dob.includes("-")) {
+        parts = pd.dob.split("-");
+      } else if (pd.dob.includes("/")) {
+        parts = pd.dob.split("/");
+      } else {
+        continue; // invalid dob format
       }
 
-      // Check range
-      if (birthdayThisYear >= today && birthdayThisYear <= nextWeek) {
-        upcomingBirthdays.push({
-          name: `${emp.firstName} ${emp.lastName}`,
-          officialEmail: emp.officialEmail || "",
-          dateOfBirth: dobString,
-          birthdayThisYear
+      let day, month, year;
+
+      if (parts[0].length === 4) {
+        // YYYY-MM-DD format
+        year = parts[0];
+        month = parts[1] - 1;
+        day = parts[2];
+      } else {
+        // DD-MM-YYYY or DD/MM/YYYY
+        day = parts[0];
+        month = parts[1] - 1;
+        year = parts[2];
+      }
+
+      const dob = new Date(year, month, day);
+
+      // Create birthday for this year
+      let thisYearBirthday = new Date(
+        today.getFullYear(),
+        dob.getMonth(),
+        dob.getDate()
+      );
+
+      // If passed → next year
+      if (thisYearBirthday < today) {
+        thisYearBirthday.setFullYear(today.getFullYear() + 1);
+      }
+
+      if (thisYearBirthday >= today && thisYearBirthday <= nextWeek) {
+        upcoming.push({
+          employeeId: emp.employeeId,
+          name: pd.firstName + " " + pd.lastName,
+          dob: pd.dob
         });
       }
-    });
+    }
 
-    upcomingBirthdays.sort((a, b) => a.birthdayThisYear - b.birthdayThisYear);
-
-    return res.status(200).json({
+    return res.json({
       msg: "Upcoming birthdays in next 7 days",
-      count: upcomingBirthdays.length,
-      birthdays: upcomingBirthdays
+      count: upcoming.length,
+      birthdays: upcoming
     });
 
   } catch (err) {
-    console.log("Error:", err);
     return res.status(500).json({ msg: "Server Error", error: err.message });
   }
 };
-
 module.exports = { getBirthdaysThisWeek };

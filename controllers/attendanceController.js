@@ -305,3 +305,102 @@ exports.getAllEmployeesMonthlyAttendance = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+exports.getFinancialYearAttendance = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    // 🟦 Get today's date in IST
+    const today = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    );
+
+    // 🟧 AUTO-DETECT FINANCIAL YEAR
+    // If current month is Jan–Feb–Mar -> financial year starts last year
+    const currentMonth = today.getMonth() + 1;
+    const financialYearStart =
+      currentMonth < 4 ? today.getFullYear() - 1 : today.getFullYear();
+    const financialYearEnd = financialYearStart + 1;
+
+    // 🟪 Month order for financial year Apr→Mar
+    const months = [
+      { name: "Apr", num: 4 },
+      { name: "May", num: 5 },
+      { name: "Jun", num: 6 },
+      { name: "Jul", num: 7 },
+      { name: "Aug", num: 8 },
+      { name: "Sep", num: 9 },
+      { name: "Oct", num: 10 },
+      { name: "Nov", num: 11 },
+      { name: "Dec", num: 12 },
+      { name: "Jan", num: 1 },
+      { name: "Feb", num: 2 },
+      { name: "Mar", num: 3 },
+    ];
+
+    // 🟩 Fetch employee
+    const employee = await Employee.findById(employeeId).select("fullName loginHistory");
+    if (!employee) return res.status(404).json({ msg: "Employee not found" });
+
+    // Login date set
+    const loginSet = new Set(
+      (employee.loginHistory || []).map(l =>
+        new Date(l.loginAt).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
+      )
+    );
+
+    // 🟥 Fetch approved leaves for whole financial year Apr→Mar
+    const leaves = await HrLeave.find({
+      employeeId,
+      status: "Approved",
+      toDate: { $gte: new Date(financialYearStart, 3, 1) }, // Apr 1
+      fromDate: { $lte: new Date(financialYearEnd, 2, 31) } // Mar 31
+    });
+
+    const leaveSet = new Set();
+    leaves.forEach(l => {
+      let d = new Date(l.fromDate);
+      while (d <= new Date(l.toDate)) {
+        leaveSet.add(
+          d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
+        );
+        d.setDate(d.getDate() + 1);
+      }
+    });
+
+    // 🟦 Generate monthly attendance for Apr → Mar
+    const graph = [];
+
+    for (const m of months) {
+      // For months Jan–Mar → use next calendar year
+      const y = m.num >= 4 ? financialYearStart : financialYearEnd;
+
+      const startDate = new Date(y, m.num - 1, 1);
+      const endDate = new Date(y, m.num, 0);
+
+      let present = 0, absent = 0, leave = 0;
+
+      let d = new Date(startDate);
+      while (d <= endDate) {
+        const dateStr = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+
+        if (loginSet.has(dateStr)) present++;
+        else if (leaveSet.has(dateStr)) leave++;
+        else absent++;
+
+        d.setDate(d.getDate() + 1);
+      }
+
+      graph.push({ month: m.name, present, absent, leave });
+    }
+
+    return res.json({
+      employeeId,
+      employeeName: employee.fullName,
+      financialYear: `${financialYearStart}-${financialYearEnd}`,
+      graph
+    });
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
