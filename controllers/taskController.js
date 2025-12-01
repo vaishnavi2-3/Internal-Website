@@ -1,6 +1,7 @@
 const Task = require("../models/Task");
 const FinalReview = require("../models/FinalReview");
 const Professional = require("../models/professionalDetails");
+const Personal = require("../models/personalDetails");
 
 /* ---------------------------------------------------
    CREATE TASK
@@ -398,17 +399,37 @@ exports.getFinalReview = async (req, res) => {
   }
 };
 
+
 exports.getPerformanceSummary = async (req, res) => {
   try {
-    // 1️⃣ Fetch all professional details (employees)
     const professionals = await Professional.find().lean();
-
     const result = [];
 
     for (const prof of professionals) {
       const empId = prof.employeeId;
 
-      // 2️⃣ Get all tasks for this employee
+      // 1️⃣ Get Personal Details (match through officialEmail)
+      const personal = await Personal.findOne({
+        officialEmail: prof.officialEmail
+      }).lean();
+
+      // 2️⃣ Build Name Properly
+      let fullName = "Unknown";
+
+      if (personal) {
+        fullName = [
+          personal.firstName,
+          personal.middleName,
+          personal.lastName,
+        ]
+          .filter(Boolean)
+          .join(" ");
+      } else {
+        // fallback from email
+        fullName = prof.officialEmail?.split("@")[0] || "Unknown";
+      }
+
+      // 3️⃣ Fetch tasks for employee
       const tasks = await Task.find({
         assignedTo: empId,
         archived: { $ne: true }
@@ -416,27 +437,24 @@ exports.getPerformanceSummary = async (req, res) => {
 
       let ratings = [];
 
-      // 3️⃣ If any rating is managerEdited => use only those
-      const managerEditedTasks = tasks.filter(t => t.managerEdited === true);
-
-      if (managerEditedTasks.length > 0) {
-        ratings = managerEditedTasks
+      const managerEditedRated = tasks.filter(t => t.managerEdited);
+      if (managerEditedRated.length > 0) {
+        ratings = managerEditedRated
           .map(t => t.rating)
           .filter(r => typeof r === "number");
       } else {
-        // Otherwise use all ratings
         ratings = tasks
           .map(t => t.rating)
           .filter(r => typeof r === "number");
       }
 
-      // 4️⃣ Compute average rating
+      // 4️⃣ Calculate avg rating
       let avgRating = 0;
       if (ratings.length > 0) {
         avgRating = ratings.reduce((a, b) => a + b, 0) / ratings.length;
       }
 
-      // 5️⃣ Convert rating → performance label
+      // 5️⃣ Performance label
       let performance = "Not Rated";
       if (avgRating >= 4.5) performance = "Excellent";
       else if (avgRating >= 3.5) performance = "Very Good";
@@ -444,7 +462,7 @@ exports.getPerformanceSummary = async (req, res) => {
       else if (avgRating >= 1.5) performance = "Average";
       else if (avgRating > 0) performance = "Poor";
 
-      // 6️⃣ Action rules
+      // 6️⃣ Action suggestion
       let action = "Pending Review";
       if (performance === "Excellent") action = "Promotion Recommended";
       else if (performance === "Very Good") action = "Increment Recommended";
@@ -452,22 +470,21 @@ exports.getPerformanceSummary = async (req, res) => {
       else if (performance === "Average") action = "Needs Monitoring";
       else if (performance === "Poor") action = "Improvement Plan Required";
 
-      // 7️⃣ Final output object
+      // 7️⃣ Push final result
       result.push({
         employeeId: empId,
-        name: prof.employeeName || prof.fullName || `${prof.firstName} ${prof.lastName}`,
-        role: prof.role || prof.designationRole || "-",
+        name: fullName,
+        role: prof.role || "-",
         department: prof.department || "-",
-        designation: prof.designation || "-",
         averageRating: Number(avgRating.toFixed(2)),
         performance,
         action
       });
     }
 
-    return res.json({
+    res.json({
       count: result.length,
-      employees: result
+      employees: result,
     });
 
   } catch (err) {

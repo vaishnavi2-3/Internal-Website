@@ -185,11 +185,12 @@ exports.getAllEmployeesMonthlyAttendance = async (req, res) => {
   try {
     let { month } = req.query;
 
-    // 1️⃣ Default to current month (IST)
+    // Current IST date
     const todayIST = new Date(
       new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
     );
 
+    // Default month = current month
     if (!month) {
       const y = todayIST.getFullYear();
       const m = todayIST.getMonth() + 1;
@@ -198,21 +199,17 @@ exports.getAllEmployeesMonthlyAttendance = async (req, res) => {
 
     const [year, monthNum] = month.split("-").map(Number);
 
-    // 2️⃣ Financial year handling (April → March)
+    // Financial year
     let financialYearStart = year;
     if (monthNum < 4) financialYearStart = year - 1;
     const financialYearEnd = financialYearStart + 1;
 
-    // 3️⃣ Month date range
+    // Month range
     const startDate = new Date(year, monthNum - 1, 1);
     const endDate = new Date(year, monthNum, 0);
 
-    // 4️⃣ Fetch all employees
-    const employees = await Employee.find().select(
-      "_id fullName loginHistory"
-    );
+    const employees = await Employee.find().select("_id fullName loginHistory");
 
-    // 5️⃣ Fetch all approved leaves in this month for all employees
     const allLeaves = await HrLeave.find({
       status: "Approved",
       toDate: { $gte: startDate },
@@ -221,19 +218,25 @@ exports.getAllEmployeesMonthlyAttendance = async (req, res) => {
 
     const result = [];
 
-    // 6️⃣ Process each employee
+    // For monthly average
+    let totalPresent = 0;
+    let totalAbsent = 0;
+    let totalLeave = 0;
+
+    // For today attendance
+    const todayStr = todayIST.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+    let presentToday = 0;
+    let absentToday = 0;
+    let leaveToday = 0;
+
     for (const emp of employees) {
-      // Login dates set
       const loginSet = new Set(
         (emp.loginHistory || []).map(log => {
           const d = new Date(log.loginAt);
-          return d.toLocaleDateString("en-CA", {
-            timeZone: "Asia/Kolkata"
-          });
+          return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
         })
       );
 
-      // Employee leaves
       const empLeaves = allLeaves.filter(l => String(l.employeeId) === String(emp._id));
 
       const leaveSet = new Set();
@@ -247,7 +250,6 @@ exports.getAllEmployeesMonthlyAttendance = async (req, res) => {
         }
       });
 
-      // Build monthly summary
       const labels = [];
       const present = [];
       const absent = [];
@@ -255,27 +257,36 @@ exports.getAllEmployeesMonthlyAttendance = async (req, res) => {
 
       let d = new Date(startDate);
       while (d <= endDate) {
-        const dateStr = d.toLocaleDateString("en-CA", {
-          timeZone: "Asia/Kolkata"
-        });
+        const dateStr = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
         labels.push(dateStr);
 
         if (loginSet.has(dateStr)) {
           present.push(1);
           absent.push(0);
           leave.push(0);
+
+          if (dateStr === todayStr) presentToday++;
         } else if (leaveSet.has(dateStr)) {
           present.push(0);
           absent.push(0);
           leave.push(1);
+
+          if (dateStr === todayStr) leaveToday++;
         } else {
           present.push(0);
           absent.push(1);
           leave.push(0);
+
+          if (dateStr === todayStr) absentToday++;
         }
 
         d.setDate(d.getDate() + 1);
       }
+
+      // Calculate totals for averages
+      totalPresent += present.reduce((a, b) => a + b, 0);
+      totalAbsent += absent.reduce((a, b) => a + b, 0);
+      totalLeave += leave.reduce((a, b) => a + b, 0);
 
       result.push({
         employeeId: emp._id,
@@ -293,10 +304,29 @@ exports.getAllEmployeesMonthlyAttendance = async (req, res) => {
       });
     }
 
+    const totalEmployees = employees.length || 1;
+
+    // Monthly Average Calculation
+    const monthlyAverageAttendance = {
+      totalDays: endDate.getDate(),
+      presentAvg: Number((totalPresent / totalEmployees).toFixed(2)),
+      absentAvg: Number((totalAbsent / totalEmployees).toFixed(2)),
+      leaveAvg: Number((totalLeave / totalEmployees).toFixed(2))
+    };
+
+    const todayAttendance = {
+      date: todayStr,
+      presentToday,
+      absentToday,
+      leaveToday
+    };
+
     return res.json({
       month,
       financialYear: `${financialYearStart}-${financialYearEnd}`,
-      totalEmployees: result.length,
+      totalEmployees,
+      todayAttendance,
+      monthlyAverageAttendance,
       data: result
     });
 
@@ -401,6 +431,94 @@ exports.getFinancialYearAttendance = async (req, res) => {
     });
 
   } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+exports.getYearlyAverageAttendance = async (req, res) => {
+  try {
+    let { year } = req.query;
+
+    // Default: current year (IST)
+    const todayIST = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    );
+    if (!year) year = todayIST.getFullYear();
+
+const employees = await Employee.find({
+  hasLoggedIn: true           // ✅ Correct filter for your schema
+}).select("_id");
+    const allLeaves = await HrLeave.find();
+
+    const monthlyData = [];
+
+    // Loop 12 months
+    for (let month = 1; month <= 12; month++) {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0);
+      const totalDays = endDate.getDate();
+
+      let totalPresent = 0;
+      let totalAbsent = 0;
+      let totalLeave = 0;
+
+      for (const emp of employees) {
+        const loginSet = new Set(
+          (emp.loginHistory || []).map(log => {
+            const d = new Date(log.loginAt);
+            return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+          })
+        );
+
+        const empLeaves = allLeaves.filter(
+          l => String(l.employeeId) === String(emp._id)
+        );
+
+        const leaveSet = new Set();
+        empLeaves.forEach(l => {
+          let d = new Date(l.fromDate);
+          while (d <= new Date(l.toDate)) {
+            leaveSet.add(
+              d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
+            );
+            d.setDate(d.getDate() + 1);
+          }
+        });
+
+        for (let day = 1; day <= totalDays; day++) {
+          const date = new Date(year, month - 1, day);
+          const dateStr = date.toLocaleDateString("en-CA", {
+            timeZone: "Asia/Kolkata",
+          });
+
+          if (loginSet.has(dateStr)) {
+            totalPresent++;
+          } else if (leaveSet.has(dateStr)) {
+            totalLeave++;
+          } else {
+            totalAbsent++;
+          }
+        }
+      }
+
+      const totalEmployees = employees.length || 1;
+
+      monthlyData.push({
+        month: `${year}-${String(month).padStart(2, "0")}`,
+        presentAvg: Number((totalPresent / totalEmployees).toFixed(2)),
+        absentAvg: Number((totalAbsent / totalEmployees).toFixed(2)),
+        leaveAvg: Number((totalLeave / totalEmployees).toFixed(2)),
+        totalDays
+      });
+    }
+
+    res.json({
+      year,
+      totalEmployees: employees.length,
+      monthlyAverages: monthlyData
+    });
+
+  } catch (err) {
+    console.error("Yearly Average Error:", err);
     return res.status(500).json({ error: err.message });
   }
 };

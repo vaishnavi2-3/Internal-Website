@@ -4,7 +4,8 @@ const router = express.Router();
 const {
   getMonthlyAttendance,
   getAllEmployeesMonthlyAttendance,
-  getTodayAttendanceSummary
+  getTodayAttendanceSummary,
+  getYearlyAverageAttendance
 } = require("../controllers/attendanceController");
 
 
@@ -15,5 +16,6 @@ router.get("/attendance/monthly/:employeeId", getMonthlyAttendance);
 router.get("/attendance/monthly", getAllEmployeesMonthlyAttendance);
 router.get("/attendance/today-summary", getTodayAttendanceSummary);
 router.get("/monthly-all", getAllEmployeesMonthlyAttendance);
+router.get("/yearly-average", getYearlyAverageAttendance);
 
 module.exports = router;
