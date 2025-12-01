@@ -4,7 +4,9 @@ const PersonalDetails = require("../models/personalDetails");
 const getBirthdaysThisWeek = async (req, res) => {
   try {
     const today = new Date();
-    const nextWeek = new Date();
+    today.setHours(0, 0, 0, 0); // normalize to midnight
+
+    const nextWeek = new Date(today);
     nextWeek.setDate(today.getDate() + 7);
 
     const employees = await Employee.find();
@@ -13,32 +15,21 @@ const getBirthdaysThisWeek = async (req, res) => {
     const upcoming = [];
 
     for (const emp of employees) {
-      const pd = personalDetails.find(
-        p => p.officialEmail === emp.email
-      );
-
+      const pd = personalDetails.find(p => p.officialEmail === emp.email);
       if (!pd || !pd.dob) continue;
 
-      // -------- FIX: Parse the DOB string --------
-      let parts;
-
-      if (pd.dob.includes("-")) {
-        parts = pd.dob.split("-");
-      } else if (pd.dob.includes("/")) {
-        parts = pd.dob.split("/");
-      } else {
-        continue; // invalid dob format
-      }
+      // Parse DOB
+      let parts = pd.dob.includes("-") ? pd.dob.split("-") : pd.dob.split("/");
 
       let day, month, year;
 
       if (parts[0].length === 4) {
-        // YYYY-MM-DD format
+        // yyyy-mm-dd
         year = parts[0];
         month = parts[1] - 1;
         day = parts[2];
       } else {
-        // DD-MM-YYYY or DD/MM/YYYY
+        // dd-mm-yyyy
         day = parts[0];
         month = parts[1] - 1;
         year = parts[2];
@@ -46,29 +37,32 @@ const getBirthdaysThisWeek = async (req, res) => {
 
       const dob = new Date(year, month, day);
 
-      // Create birthday for this year
-      let thisYearBirthday = new Date(
+      // Create birthday date for this year
+      let birthdayThisYear = new Date(
         today.getFullYear(),
         dob.getMonth(),
         dob.getDate()
       );
+      birthdayThisYear.setHours(0, 0, 0, 0);
 
-      // If passed → next year
-      if (thisYearBirthday < today) {
-        thisYearBirthday.setFullYear(today.getFullYear() + 1);
+      // If this year's birthday already passed and not today → use next year
+      if (birthdayThisYear < today) {
+        birthdayThisYear.setFullYear(today.getFullYear() + 1);
       }
 
-      if (thisYearBirthday >= today && thisYearBirthday <= nextWeek) {
+      // Include today + next 7 days
+      if (birthdayThisYear >= today && birthdayThisYear <= nextWeek) {
         upcoming.push({
           employeeId: emp.employeeId,
-          name: pd.firstName + " " + pd.lastName,
-          dob: pd.dob
+          name: `${pd.firstName} ${pd.lastName}`,
+          dob: pd.dob,
+          birthdayDate: birthdayThisYear
         });
       }
     }
 
     return res.json({
-      msg: "Upcoming birthdays in next 7 days",
+      msg: "Birthdays today and next 7 days",
       count: upcoming.length,
       birthdays: upcoming
     });
@@ -77,4 +71,5 @@ const getBirthdaysThisWeek = async (req, res) => {
     return res.status(500).json({ msg: "Server Error", error: err.message });
   }
 };
+
 module.exports = { getBirthdaysThisWeek };
