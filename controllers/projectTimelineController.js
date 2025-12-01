@@ -168,3 +168,39 @@ exports.deleteProject = async (req, res) => {
     });
   }
 };
+// ✅ Get project assignment summary for HR Dashboard
+exports.getProjectAssignmentSummary = async (req, res) => {
+  try {
+    const projects = await ProjectTimeline.find();
+
+    const summary = projects.map(project => {
+      // Handle single employee string OR array
+      let assigned = project.assignedTo;
+
+      if (!Array.isArray(assigned)) {
+        assigned = assigned ? [assigned] : [];
+      }
+
+      return {
+        projectId: project.projectId,
+        projectName: project.projectName || project.title || "Untitled",
+        totalAssigned: assigned.length,
+        assignedEmployees: assigned,
+        startDate: project.startDate,
+        endDate: project.endDate,
+        manager: project.assignedBy
+      };
+    });
+
+    res.status(200).json({
+      count: summary.length,
+      summary
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      msg: "Error fetching project assignment summary",
+      error: error.message,
+    });
+  }
+};

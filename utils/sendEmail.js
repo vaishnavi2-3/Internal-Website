@@ -22,14 +22,17 @@ const sendEmail = async ({ to, subject, html }) => {
     //   },
     // });
     const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+      host: "smtp.office365.com",
+      port: 587,
+      secure: false, // TLS required
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,   // App Password or Office365 password (if SMTP enabled)
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
 
 transporter.verify((err) => {
   if (err) console.error("EMAIL ERROR:", err);

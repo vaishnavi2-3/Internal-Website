@@ -9,6 +9,7 @@ const {
   getProjectsByManager,
   updateProject,
   deleteProject,
+  getProjectAssignmentSummary
 } = require("../controllers/projectTimelineController");
 
 // ✅ Create a new project
@@ -31,5 +32,7 @@ router.put("/:projectId", updateProject);
 
 // ✅ Delete project by projectId
 router.delete("/:projectId", deleteProject);
+router.get("/summary/hr", getProjectAssignmentSummary);
+
 
 module.exports = router;
