@@ -56,3 +56,16 @@ exports.getWeeklyReminders = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+exports.getAllReminders = async (req, res) => {
+  try {
+    const reminders = await Reminder.find().sort({ reminderDate: 1 }); // oldest → latest
+
+    return res.status(200).json({
+      count: reminders.length,
+      reminders
+    });
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};

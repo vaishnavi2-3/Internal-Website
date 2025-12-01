@@ -79,5 +79,6 @@ router.delete("/:id/comments", taskCtrl.deleteComment);
 router.get("/:employeeId", taskCtrl.getTasksByFY);
 router.put("/:id", taskCtrl.updateTask);
 router.delete("/:id", taskCtrl.deleteTask);
+router.get("/performance/summary",taskCtrl.getPerformanceSummary);
 
 module.exports = router;

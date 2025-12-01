@@ -184,13 +184,27 @@ exports.getProjectAssignmentSummary = async (req, res) => {
         assignedList = [project.assignedTo];
       }
 
+      // ⭐ CALCULATE DURATION
+      let duration = null;
+
+      if (project.startDate && project.endDate) {
+        const start = new Date(project.startDate);
+        const end = new Date(project.endDate);
+
+        const diffMs = end - start;       // milliseconds
+        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+        duration = Math.ceil(diffDays);   // round up
+      }
+
       return {
         projectId: project.projectId,
         projectName: project.projectName || "Untitled",
-        totalAssignedEmployees: assignedList.length,   // ⭐ your required value
-        assignedEmployees: assignedList,               // list of employees
+        totalAssignedEmployees: assignedList.length,
+        assignedEmployees: assignedList,
         startDate: project.startDate,
         endDate: project.endDate,
+        duration,                     // ⭐ ADDED HERE
         assignedBy: project.assignedBy
       };
     });
