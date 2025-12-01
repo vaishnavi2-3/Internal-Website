@@ -522,3 +522,139 @@ const employees = await Employee.find({
     return res.status(500).json({ error: err.message });
   }
 };
+exports.getDayWiseAndWeeklyAttendance = async (req, res) => {
+  try {
+    let { month, year } = req.query;
+
+    // AUTO DETECT CURRENT MONTH & YEAR
+    const todayIST = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    );
+    if (!month) month = todayIST.getMonth() + 1;
+    if (!year) year = todayIST.getFullYear();
+
+    month = Number(month);
+    year = Number(year);
+
+    // Month date range
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+
+const employees = await Employee.find({
+  loginCount: { $gt: 0 }
+}).select("_id fullName loginHistory");
+
+const totalEmployees = employees.length;   // ✔ same variable
+
+    const allLeaves = await HrLeave.find({
+      fromDate: { $lte: endDate },
+      toDate: { $gte: startDate }
+    });
+
+    const results = [];
+
+    for (const emp of employees) {
+      // Create Login Set
+      const loginSet = new Set(
+        (emp.loginHistory || []).map(log =>
+          new Date(log.loginAt).toLocaleDateString(
+            "en-CA",
+            { timeZone: "Asia/Kolkata" }
+          )
+        )
+      );
+
+      // Leave Set
+      const empLeaves = allLeaves.filter(
+        l => String(l.employeeId) === String(emp._id)
+      );
+
+      const leaveSet = new Set();
+      empLeaves.forEach(l => {
+        let d = new Date(l.fromDate);
+        while (d <= new Date(l.toDate)) {
+          leaveSet.add(
+            d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
+          );
+          d.setDate(d.getDate() + 1);
+        }
+      });
+
+      // DAY-WISE Arrays
+      const labels = [];
+      const present = [];
+      const absent = [];
+      const leave = [];
+
+      // WEEKLY TOTALS
+      const weeklyTotals = {
+        week1: { present: 0, absent: 0, leave: 0 },
+        week2: { present: 0, absent: 0, leave: 0 },
+        week3: { present: 0, absent: 0, leave: 0 },
+        week4: { present: 0, absent: 0, leave: 0 },
+        week5: { present: 0, absent: 0, leave: 0 }
+      };
+
+      let d = new Date(startDate);
+      while (d <= endDate) {
+        const dateStr = d.toLocaleDateString("en-CA", {
+          timeZone: "Asia/Kolkata"
+        });
+
+        labels.push(dateStr);
+
+        // Determine Week Number (1-5)
+        const weekNum = Math.ceil(d.getDate() / 7);
+
+        if (loginSet.has(dateStr)) {
+          present.push(1);
+          absent.push(0);
+          leave.push(0);
+
+          weeklyTotals[`week${weekNum}`].present++;
+
+        } else if (leaveSet.has(dateStr)) {
+          present.push(0);
+          absent.push(0);
+          leave.push(1);
+
+          weeklyTotals[`week${weekNum}`].leave++;
+
+        } else {
+          present.push(0);
+          absent.push(1);
+          leave.push(0);
+
+          weeklyTotals[`week${weekNum}`].absent++;
+        }
+
+        d.setDate(d.getDate() + 1);
+      }
+
+      results.push({
+        employeeId: emp._id,
+        employeeName: emp.fullName,
+        month,
+        year,
+        totalDays: labels.length,
+        labels,
+        present,
+        absent,
+        leave,
+        weeklyTotals
+      });
+    }
+
+    return res.json({
+      month,
+      year,
+      totalEmployees: employees.length,
+      data: results
+    });
+
+  } catch (err) {
+    console.error("Day & Weekly Attendance Error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+};
+

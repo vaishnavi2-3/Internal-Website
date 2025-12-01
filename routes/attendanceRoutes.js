@@ -5,7 +5,8 @@ const {
   getMonthlyAttendance,
   getAllEmployeesMonthlyAttendance,
   getTodayAttendanceSummary,
-  getYearlyAverageAttendance
+  getYearlyAverageAttendance,
+  getDayWiseAndWeeklyAttendance
 } = require("../controllers/attendanceController");
 
 
@@ -17,5 +18,6 @@ router.get("/attendance/monthly", getAllEmployeesMonthlyAttendance);
 router.get("/attendance/today-summary", getTodayAttendanceSummary);
 router.get("/monthly-all", getAllEmployeesMonthlyAttendance);
 router.get("/yearly-average", getYearlyAverageAttendance);
+router.get("/attendance/day-week/all", getDayWiseAndWeeklyAttendance);
 
 module.exports = router;

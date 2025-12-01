@@ -29,6 +29,7 @@ router.get("/timesheet/month-year/list", verifyToken, timesheetController.getMon
 
 // Monthly breakdown directly from TimeEntry
 router.get("/timesheet/from-entry", verifyToken, timesheetController.getMonthYearFromTimeEntry);
+router.get("/all/employees",timesheetController.getAllEmployeesTimesheet);
 
 // ---------------------- ADMIN ROUTES ----------------------
 

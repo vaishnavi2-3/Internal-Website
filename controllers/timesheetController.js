@@ -615,5 +615,81 @@ const entries = await TimeEntry.find({
     return res.status(500).json({ msg: err.message });
   }
 };
+exports.getAllEmployeesTimesheet = async (req, res) => {
+  try {
+    // 1️⃣ Get all employees from Professional Details
+    const professionals = await Professional.find().lean();
+
+    if (!professionals.length) {
+      return res.json({ count: 0, timesheet: [] });
+    }
+
+    const finalOutput = [];
+
+    // 2️⃣ Loop through each employee
+    for (const prof of professionals) {
+      const officialEmail = prof.officialEmail;
+      const employeeId = prof.employeeId;
+
+      // 3️⃣ Get personal details → employeeName
+      const personal = await Personal.findOne({
+        officialEmail: prof.officialEmail,
+      }).lean();
+
+      const employeeName = personal
+        ? `${personal.firstName} ${personal.middleName || ""} ${personal.lastName}`
+        : prof.officialEmail.split("@")[0];
+
+      // 4️⃣ Fetch timesheet by officialEmail OR employeeId
+      const entries = await TimeEntry.find({
+        $or: [{ officialEmail }, { employeeId }],
+      })
+        .sort({ date: -1 })
+        .lean();
+
+      // 5️⃣ Get approved leaves
+      const leaves = await Leave.find({
+        officialEmail,
+        status: "Approved",
+      }).lean();
+
+      const leaveDates = new Set();
+      leaves.forEach((l) => {
+        let d = new Date(l.fromDate);
+        while (d <= new Date(l.toDate)) {
+          leaveDates.add(d.toISOString().split("T")[0]);
+          d.setDate(d.getDate() + 1);
+        }
+      });
+
+      // 6️⃣ Format timesheet records
+      const formattedEntries = entries.map((e) => {
+        const dateStr = new Date(e.date).toISOString().split("T")[0];
+
+        return {
+          employeeId,
+          employeeName,
+          role: prof.role,
+          department: prof.department,
+          date: dateStr,
+          project: e.projectName,
+          status: leaveDates.has(dateStr) ? "Leave" : "Present",
+          workHours: e.hours,
+        };
+      });
+
+      // Push into master list
+      finalOutput.push(...formattedEntries);
+    }
+
+    return res.json({
+      count: finalOutput.length,
+      timesheet: finalOutput,
+    });
+  } catch (err) {
+    console.error("getAllEmployeesTimesheet Error:", err);
+    return res.status(500).json({ msg: err.message });
+  }
+};
 
 module.exports = exports;
