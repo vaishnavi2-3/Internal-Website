@@ -16,6 +16,7 @@ router.put("/timesheet/:id", verifyToken, timesheetController.updateTimeEntryByE
 
 // Patch entry (PATCH)
 router.patch("/timesheet/:id", verifyToken, timesheetController.patchTimeEntryByEmail);
+router.get("/timesheet/employee/:employeeId",timesheetController.getTimesheetByEmployeeId);
 
 // Delete entry
 router.delete("/timesheet/:id", verifyToken, timesheetController.deleteTimeEntry);

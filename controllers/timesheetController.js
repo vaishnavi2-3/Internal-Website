@@ -3,6 +3,9 @@ const mongoose = require('mongoose');
 const TimeEntry = require('../models/TimeEntry');
 const TimeSummary = require('../models/TimeSummary');
 const Leave = require('../models/leave');
+const Personal = require("../models/personalDetails");
+const Professional = require("../models/professionalDetails");
+
 const { updateTimeSummary } = require("../services/updateTimeSummary"); // <-- ✔ REQUIRED
 
 const MAX_HOURS_PER_DAY = 9;
@@ -536,6 +539,80 @@ exports.applyLeaveToTimesheet = async (employeeEmail, start, end) => {
     );
 
     await updateTimeSummary(employeeEmail, date);
+  }
+};
+// GET TIMESHEET FOR EMPLOYEE BY ID
+exports.getTimesheetByEmployeeId = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    if (!employeeId) {
+      return res.status(400).json({ msg: "employeeId is required" });
+    }
+
+    // 1️⃣ Fetch employee email and details
+    const prof = await Professional.findOne({ employeeId }).lean();
+    if (!prof) return res.status(404).json({ msg: "Employee not found" });
+
+    const personal = await Personal.findOne({ officialEmail: prof.officialEmail }).lean();
+
+    const employeeName = personal
+      ? `${personal.firstName} ${personal.middleName || ""} ${personal.lastName}`
+      : prof.officialEmail.split("@")[0];
+
+    const officialEmail = prof.officialEmail;
+
+    // 2️⃣ Fetch all time entries
+const entries = await TimeEntry.find({
+  $or: [
+    { officialEmail },
+    { employeeId }   // if stored
+  ]
+})
+.sort({ date: -1 })
+.lean();
+
+    // 3️⃣ Fetch all approved leaves
+    const leaves = await Leave.find({
+      officialEmail,
+      status: "Approved"
+    }).lean();
+
+    const leaveDates = new Set();
+    leaves.forEach(l => {
+      let d = new Date(l.fromDate);
+      while (d <= new Date(l.toDate)) {
+        leaveDates.add(d.toISOString().split("T")[0]);
+        d.setDate(d.getDate() + 1);
+      }
+    });
+
+    // 4️⃣ Create final formatted list
+    const formatted = entries.map(e => {
+      const dateStr = new Date(e.date).toISOString().split("T")[0];
+
+      return {
+        id: e._id,
+        employeeName,
+        role: prof.role,
+        department: prof.department,
+        project: e.projectName,
+        date: dateStr,
+        status: leaveDates.has(dateStr) ? "Leave" : "Present",
+        workHours: e.hours
+      };
+    });
+
+    return res.json({
+      employeeId,
+      employeeName,
+      count: formatted.length,
+      timesheet: formatted
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ msg: err.message });
   }
 };
 
