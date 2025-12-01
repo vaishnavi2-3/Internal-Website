@@ -174,26 +174,29 @@ exports.getProjectAssignmentSummary = async (req, res) => {
     const projects = await ProjectTimeline.find();
 
     const summary = projects.map(project => {
-      // Handle single employee string OR array
-      let assigned = project.assignedTo;
+      
+      // Normalize assignedTo
+      let assignedList = [];
 
-      if (!Array.isArray(assigned)) {
-        assigned = assigned ? [assigned] : [];
+      if (Array.isArray(project.assignedTo)) {
+        assignedList = project.assignedTo;
+      } else if (project.assignedTo) {
+        assignedList = [project.assignedTo];
       }
 
       return {
         projectId: project.projectId,
-        projectName: project.projectName || project.title || "Untitled",
-        totalAssigned: assigned.length,
-        assignedEmployees: assigned,
+        projectName: project.projectName || "Untitled",
+        totalAssignedEmployees: assignedList.length,   // ⭐ your required value
+        assignedEmployees: assignedList,               // list of employees
         startDate: project.startDate,
         endDate: project.endDate,
-        manager: project.assignedBy
+        assignedBy: project.assignedBy
       };
     });
 
     res.status(200).json({
-      count: summary.length,
+      totalProjects: summary.length,
       summary
     });
 
