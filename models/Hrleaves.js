@@ -6,6 +6,7 @@ const hrLeaveSchema = new mongoose.Schema(
     employeeName: String,
     employeeDepartment: String,
     employeeDesignation: String,
+    // officialEmail: { type: String, required: true },   // ⭐ ADD THIS
 
     fromDate: Date,
     toDate: Date,

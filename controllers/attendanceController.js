@@ -3,54 +3,47 @@ const HrLeave = require("../models/Hrleaves");
 const Leave = require("../models/leave");
 
 
+
 exports.getTodayAttendanceSummary = async (req, res) => {
   try {
-    // 1️⃣ Today date in IST
+    // Today in IST
     const now = new Date();
-    const today = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-    today.setHours(0, 0, 0, 0);
+    const todayStart = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    todayStart.setHours(0, 0, 0, 0);
 
-    // 2️⃣ Get employees who logged in at least once
+    const todayEnd = new Date(todayStart);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    // 1️⃣ All employees who logged in at least once
     const totalEmployees = await Employee.find({ loginCount: { $gt: 0 } })
-      .select("_id fullName department loginCount");
+      .select("_id fullName email loginCount");
 
-    // Filter only employees with valid _id
-    const validEmployees = totalEmployees.filter(emp => emp && emp._id);
-
-    // 3️⃣ Get approved leaves
-    const absentLeaves = await HrLeave.find({
+    // 2️⃣ Approved leaves from `Leave` collection
+    const absentLeaves = await Leave.find({
       status: "Approved",
-      fromDate: { $lte: today },
-      toDate: { $gte: today }
-    }).select("employeeId");
+      fromDate: { $lte: todayEnd },
+      toDate: { $gte: todayStart }
+    }).select("officialEmail");
 
-    // Convert only valid employeeId to string
-    const absentIds = new Set(
-      absentLeaves
-        .filter(l => l && l.employeeId)
-        .map(l => String(l.employeeId))  // safest conversion
-    );
+    // 3️⃣ Build email set
+    const absentEmails = new Set(absentLeaves.map(l => l.officialEmail));
 
-    // 4️⃣ Split present & absent
     const presentEmployees = [];
     const absentEmployees = [];
 
-    for (let emp of validEmployees) {
-      if (!emp || !emp._id) continue;  // skip null
-
-      const id = String(emp._id);  // safe string conversion
-
-      if (absentIds.has(id)) {
+    // 4️⃣ Match by EMAIL
+    for (let emp of totalEmployees) {
+      if (absentEmails.has(emp.email)) {
         absentEmployees.push(emp);
       } else {
         presentEmployees.push(emp);
       }
     }
 
-    // 5️⃣ Final response
+    // 5️⃣ Response
     return res.json({
-      date: today.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }),
-      totalEmployees: validEmployees.length,
+      date: todayStart.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }),
+      totalEmployees: totalEmployees.length,
       presentToday: presentEmployees.length,
       absentToday: absentEmployees.length,
       presentEmployees,
