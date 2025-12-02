@@ -1,6 +1,7 @@
 const ProfessionalDetails = require("../models/professionalDetails");
 const TrainingTask = require("../models/TrainingTask");
 const Employee = require("../models/Employee");
+const PersonalDetails = require("../models/personalDetails");
 
 // =====================================================
 // Fetch employee details for auto-fill
@@ -10,26 +11,26 @@ exports.getEmployeeDetails = async (req, res) => {
     const { employeeId } = req.params;
 
     const prof = await ProfessionalDetails.findOne({ employeeId });
+    const personal = await PersonalDetails.findOne({ officialEmail: prof?.officialEmail });
 
-    if (!prof) {
+    if (!prof || !personal) {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    // Safe employeeName
-    let employeeName = "Unknown";
-    if (prof.officialEmail) {
-      employeeName = prof.officialEmail.split("@")[0];
-    } else if (prof.employeeName) {
-      employeeName = prof.employeeName;
-    }
+    // Build full name from PersonalDetails
+    const employeeName = [
+      personal.firstName,
+      personal.middleName,
+      personal.lastName
+    ]
+      .filter(Boolean) // remove empty values
+      .join(" ");
 
     // Safe managerName
-    let managerName = "";
-    if (prof.managerName) {
-      managerName = prof.managerName;
-    } else if (prof.experiences?.length > 0) {
-      managerName = prof.experiences[0].managerName || "";
-    }
+    const managerName =
+      prof.managerName ||
+      (prof.experiences?.length ? prof.experiences[0].managerName : "") ||
+      "";
 
     return res.status(200).json({
       employeeName,
@@ -54,14 +55,26 @@ exports.createTrainingTask = async (req, res) => {
       fromDate,
       toDate,
       mode,
-      duration
+      duration,
+
+      // EXTRA FIELDS (only for multiple employees)
+      batch,
+      trainingCategory,
+      selectedCourses,
+      trainingStartDate,
+      trainingEndDate,
+      durationDays,
+      Mode,
+      trainingName,
+      trainer
     } = req.body;
 
-    // Convert to array (supports single + multiple)
+    // Convert to array
     const employeeIds = Array.isArray(employeeId)
       ? employeeId
       : [employeeId];
 
+    // Basic validation
     if (!employeeId || employeeIds.length === 0) {
       return res.status(400).json({ message: "employeeId is required" });
     }
@@ -74,14 +87,22 @@ exports.createTrainingTask = async (req, res) => {
 
     const createdTasks = [];
 
+    const isMultiple = employeeIds.length > 1;
+
     for (const empId of employeeIds) {
       const prof = await ProfessionalDetails.findOne({ employeeId: empId });
-      if (!prof) continue;
+      const personal = await PersonalDetails.findOne({ officialEmail: prof?.officialEmail });
 
-      const employeeName =
-        prof.employeeName ||
-        (prof.officialEmail?.split("@")[0]) ||
-        "Unknown";
+      if (!prof || !personal) continue;
+
+      // Build employee full name
+      const employeeName = [
+        personal.firstName,
+        personal.middleName,
+        personal.lastName
+      ]
+        .filter(Boolean)
+        .join(" ");
 
       const managerName =
         prof.managerName ||
@@ -90,7 +111,8 @@ exports.createTrainingTask = async (req, res) => {
 
       const department = prof.department || "";
 
-      const newTask = new TrainingTask({
+      // Base task (required for both single & multiple)
+      const taskData = {
         employeeId: empId,
         employeeName,
         department,
@@ -101,20 +123,42 @@ exports.createTrainingTask = async (req, res) => {
         toDate: new Date(toDate),
         mode,
         duration
-      });
+      };
 
+      // Save extra fields ONLY IF multiple employees
+      if (isMultiple) {
+        taskData.extraDetails = {
+          batch,
+          trainingCategory,
+          selectedCourses: Array.isArray(selectedCourses)
+            ? selectedCourses
+            : [],
+          trainingStartDate: trainingStartDate
+            ? new Date(trainingStartDate)
+            : null,
+          trainingEndDate: trainingEndDate
+            ? new Date(trainingEndDate)
+            : null,
+          durationDays,
+          Mode,
+          trainingName,
+          trainer
+        };
+      }
+
+      const newTask = new TrainingTask(taskData);
       await newTask.save();
       createdTasks.push(newTask);
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Training Task Created Successfully",
       count: createdTasks.length,
       tasks: createdTasks
     });
 
   } catch (err) {
-    res.status(500).json({ message: "Server Error", error: err.message });
+    return res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
 
