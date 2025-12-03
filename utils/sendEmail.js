@@ -21,18 +21,19 @@ const sendEmail = async ({ to, subject, html }) => {
     //     pass: process.env.EMAIL_PASS,  // App Password
     //   },
     // });
-    const transporter = nodemailer.createTransport({
-      host: "smtp.office365.com",
-      port: 587,
-      secure: false, // TLS required
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,   // App Password or Office365 password (if SMTP enabled)
-      },
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
+const transporter = nodemailer.createTransport({
+  host: "smtp.office365.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  },
+  tls: {
+    ciphers:'SSLv3',
+    rejectUnauthorized: false
+  }
+});
 
 transporter.verify((err) => {
   if (err) console.error("EMAIL ERROR:", err);
@@ -54,5 +55,7 @@ transporter.verify((err) => {
     throw err;
   }
 };
+console.log("USER:", process.env.EMAIL_USER);
+console.log("PASS LENGTH:", process.env.EMAIL_PASS.length);
 
 module.exports = sendEmail;

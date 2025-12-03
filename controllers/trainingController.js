@@ -46,10 +46,135 @@ exports.getEmployeeDetails = async (req, res) => {
 // =====================================================
 // Create Training Task
 // =====================================================
+// exports.createTrainingTask = async (req, res) => {
+//   try {
+//     let {
+//       employeeId,   // string OR array
+//       trainingTitle,
+//       level,
+//       fromDate,
+//       toDate,
+//       mode,
+//       duration,
+
+//       // EXTRA FIELDS (only for multiple employees)
+//       batch,
+//       trainingCategory,
+//       selectedCourses,
+//       trainingStartDate,
+//       trainingEndDate,
+//       durationDays,
+//       Mode,
+//       trainingName,
+//       trainer
+//     } = req.body;
+
+//     // Convert to array
+//     const employeeIds = Array.isArray(employeeId)
+//       ? employeeId
+//       : [employeeId];
+
+//     // Basic validation
+//     if (!employeeId || employeeIds.length === 0) {
+//       return res.status(400).json({ message: "employeeId is required" });
+//     }
+
+//     if (!trainingTitle || !level || !fromDate || !toDate) {
+//       return res.status(400).json({
+//         message: "trainingTitle, level, fromDate, toDate are required"
+//       });
+//     }
+
+//     const createdTasks = [];
+
+//     const isMultiple = employeeIds.length > 1;
+
+//     for (const empId of employeeIds) {
+//       const prof = await ProfessionalDetails.findOne({ employeeId: empId });
+//       const personal = await PersonalDetails.findOne({ officialEmail: prof?.officialEmail });
+
+//       if (!prof || !personal) continue;
+
+//       // Build employee full name
+//       const employeeName = [
+//         personal.firstName,
+//         personal.middleName,
+//         personal.lastName
+//       ]
+//         .filter(Boolean)
+//         .join(" ");
+
+//       const managerName =
+//         prof.managerName ||
+//         prof.experiences?.[0]?.managerName ||
+//         "";
+
+//       const department = prof.department || "";
+
+//       // Base task (required for both single & multiple)
+//       const taskData = {
+//         employeeId: empId,
+//         employeeName,
+//         department,
+//         managerName,
+//         trainingTitle,
+//         level,
+//         fromDate: new Date(fromDate),
+//         toDate: new Date(toDate),
+//         mode,
+//         duration
+//       };
+
+//       // Save extra fields ONLY IF multiple employees
+//       if (isMultiple) {
+//         taskData.extraDetails = {
+//           batch,
+//           trainingCategory,
+//           selectedCourses: Array.isArray(selectedCourses)
+//             ? selectedCourses
+//             : [],
+//           trainingStartDate: trainingStartDate
+//             ? new Date(trainingStartDate)
+//             : null,
+//           trainingEndDate: trainingEndDate
+//             ? new Date(trainingEndDate)
+//             : null,
+//           durationDays,
+//           Mode,
+//           trainingName,
+//           trainer
+//         };
+//       }
+
+//       const newTask = new TrainingTask(taskData);
+//       await newTask.save();
+//       createdTasks.push(newTask);
+//     }
+
+//     return res.status(201).json({
+//       message: "Training Task Created Successfully",
+//       count: createdTasks.length,
+//       tasks: createdTasks
+//     });
+
+//   } catch (err) {
+//     return res.status(500).json({ message: "Server Error", error: err.message });
+//   }
+// };
+
+// Utility function
+
+// Utility: Calculate months difference
+function getMonthsDifference(startDate, endDate = new Date()) {
+  const years = endDate.getFullYear() - startDate.getFullYear();
+  const months = endDate.getMonth() - startDate.getMonth();
+  return years * 12 + months;
+}
+
 exports.createTrainingTask = async (req, res) => {
   try {
     let {
-      employeeId,   // string OR array
+      employeeId,          // single OR multiple
       trainingTitle,
       level,
       fromDate,
@@ -57,7 +182,7 @@ exports.createTrainingTask = async (req, res) => {
       mode,
       duration,
 
-      // EXTRA FIELDS (only for multiple employees)
+      // FRESHER extra fields
       batch,
       trainingCategory,
       selectedCourses,
@@ -66,43 +191,42 @@ exports.createTrainingTask = async (req, res) => {
       durationDays,
       Mode,
       trainingName,
-      trainer
+      trainer,
+
+      // Newly added fields
+      progress,
+      status
     } = req.body;
 
-    // Convert to array
+    // Convert employeeId to array
     const employeeIds = Array.isArray(employeeId)
       ? employeeId
       : [employeeId];
 
-    // Basic validation
-    if (!employeeId || employeeIds.length === 0) {
+    if (!employeeId || employeeIds.length === 0)
       return res.status(400).json({ message: "employeeId is required" });
-    }
 
-    if (!trainingTitle || !level || !fromDate || !toDate) {
+    if (!trainingTitle || !level || !fromDate || !toDate)
       return res.status(400).json({
         message: "trainingTitle, level, fromDate, toDate are required"
       });
-    }
 
     const createdTasks = [];
 
-    const isMultiple = employeeIds.length > 1;
-
     for (const empId of employeeIds) {
       const prof = await ProfessionalDetails.findOne({ employeeId: empId });
-      const personal = await PersonalDetails.findOne({ officialEmail: prof?.officialEmail });
+      const personal = await PersonalDetails.findOne({
+        officialEmail: prof?.officialEmail
+      });
 
       if (!prof || !personal) continue;
 
-      // Build employee full name
+      // Build employee name
       const employeeName = [
         personal.firstName,
         personal.middleName,
         personal.lastName
-      ]
-        .filter(Boolean)
-        .join(" ");
+      ].filter(Boolean).join(" ");
 
       const managerName =
         prof.managerName ||
@@ -111,8 +235,13 @@ exports.createTrainingTask = async (req, res) => {
 
       const department = prof.department || "";
 
-      // Base task (required for both single & multiple)
-      const taskData = {
+      // 🌟 Determine Fresher using joiningDate
+      const joiningDate = prof.joiningDate;
+      const months = getMonthsDifference(new Date(joiningDate));
+      const isFresher = months <= 3; // <= 3 months → fresher
+
+      // Base task data
+      let taskData = {
         employeeId: empId,
         employeeName,
         department,
@@ -125,9 +254,20 @@ exports.createTrainingTask = async (req, res) => {
         duration
       };
 
-      // Save extra fields ONLY IF multiple employees
-      if (isMultiple) {
+      // 🌟 FRESHER LOGIC (Single or Multiple)
+      if (isFresher) {
+        taskData.type = "Fresher";
+
         taskData.extraDetails = {
+          // NEW REQUIRED FIELDS FOR FRESHERS
+          fresherId: empId,
+          fresherName: employeeName,
+          progress: progress || 0,
+          status: status || "Assigned",
+          isBulk: employeeIds.length > 1, // true if multiple ids
+          assignedDate: new Date().toISOString(),
+
+          // EXISTING FIELDS
           batch,
           trainingCategory,
           selectedCourses: Array.isArray(selectedCourses)
@@ -146,8 +286,12 @@ exports.createTrainingTask = async (req, res) => {
         };
       }
 
-      const newTask = new TrainingTask(taskData);
-      await newTask.save();
+      // 🌟 PREVIOUS EMPLOYEE LOGIC (basic fields only)
+      else {
+        taskData.type = "Previous Employee";
+      }
+
+      const newTask = await TrainingTask.create(taskData);
       createdTasks.push(newTask);
     }
 
@@ -158,7 +302,10 @@ exports.createTrainingTask = async (req, res) => {
     });
 
   } catch (err) {
-    return res.status(500).json({ message: "Server Error", error: err.message });
+    return res.status(500).json({
+      message: "Server Error",
+      error: err.message
+    });
   }
 };
 
