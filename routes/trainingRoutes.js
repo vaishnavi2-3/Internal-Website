@@ -9,11 +9,15 @@ const {
   addExam,
   updateExam,
   deleteExam,
-  getAllAssignedEmployees,
+  // getAllAssignedEmployees,
   assignTasksToDepartment,
   getAllDepartments,
   getEmployeesByDepartment,
-  getEmployeeByDepartmentAndId
+  getEmployeeByDepartmentAndId,
+  getAllAssignedEmployees,
+  getCompletedTasks,
+  getInProgressTasks
+
 
 } = require("../controllers/trainingController");
 
@@ -37,11 +41,15 @@ router.post("/assign/department", assignTasksToDepartment);
 
 // HR deletes exam
 router.delete("/:taskId/delete-exam/:examId", deleteExam);
-router.get("/assigned/employees", getAllAssignedEmployees);
+// router.get("/assigned/employees", getAllAssignedEmployees);
 router.get("/departments", getAllDepartments);
 router.get("/departments/:departmentName", getEmployeesByDepartment);
 // GET single employee from department
 router.get("/departments/:departmentName/:employeeId",getEmployeeByDepartmentAndId);
+
+router.get("/assigned", getAllAssignedEmployees);
+router.get("/tasks/completed", getCompletedTasks);
+router.get("/tasks/in-progress", getInProgressTasks);
 
 
 module.exports = router;

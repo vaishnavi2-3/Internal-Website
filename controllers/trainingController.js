@@ -287,9 +287,15 @@ exports.createTrainingTask = async (req, res) => {
       }
 
       // 🌟 PREVIOUS EMPLOYEE LOGIC (basic fields only)
-      else {
-        taskData.type = "Previous Employee";
-      }
+else {
+  taskData.type = "Previous Employee";
+
+  taskData.extraDetails = {
+    assignedDate: new Date().toISOString(),
+    durationDays: durationDays || parseInt(duration) || 0,
+    status: status || "Assigned",
+  };
+}
 
       const newTask = await TrainingTask.create(taskData);
       createdTasks.push(newTask);
@@ -606,6 +612,94 @@ exports.getEmployeeByDepartmentAndId = async (req, res) => {
         department: emp.department,
         managerName
       }
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Server Error", error: err.message });
+  }
+};
+exports.getAllAssignedEmployees = async (req, res) => {
+  try {
+    const tasks = await TrainingTask.find({})
+      .select(
+        "employeeId employeeName department managerName trainingTitle level fromDate toDate mode duration createdAt updatedAt"
+      )
+      .sort({ createdAt: -1 });
+
+    if (!tasks || tasks.length === 0) {
+      return res.status(404).json({ message: "No assigned tasks found" });
+    }
+
+    return res.status(200).json({
+      message: "Assigned employee tasks fetched successfully",
+      tasks
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Server Error", error: err.message });
+  }
+};
+// =====================================================
+// Get Completed Tasks
+// =====================================================
+exports.getCompletedTasks = async (req, res) => {
+  try {
+    const today = new Date();
+    const tasks = await TrainingTask.find();
+
+    const completed = tasks.filter(task => {
+      const assigned = task?.extraDetails?.assignedDate;
+      const durationDays = task?.extraDetails?.durationDays;
+
+      if (!assigned || !durationDays) return false;
+
+      const assignedDate = new Date(assigned);
+      const diffDays = Math.floor((today - assignedDate) / 86400000);
+
+      return diffDays > durationDays;
+    });
+
+    if (!completed.length) {
+      return res.status(404).json({ message: "No completed tasks found" });
+    }
+
+    return res.status(200).json({
+      message: "Completed tasks fetched successfully",
+      tasks: completed
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Server Error", error: err.message });
+  }
+};
+
+// =====================================================
+// Get In-Progress Tasks
+// =====================================================
+exports.getInProgressTasks = async (req, res) => {
+  try {
+    const today = new Date();
+    const tasks = await TrainingTask.find();
+
+    const inProgress = tasks.filter(task => {
+      const assigned = task?.extraDetails?.assignedDate;
+      const durationDays = task?.extraDetails?.durationDays;
+
+      if (!assigned || !durationDays) return false;
+
+      const assignedDate = new Date(assigned);
+      const diffDays = Math.floor((today - assignedDate) / 86400000);
+
+      return diffDays <= durationDays;
+    });
+
+    if (!inProgress.length) {
+      return res.status(404).json({ message: "No in-progress tasks found" });
+    }
+
+    return res.status(200).json({
+      message: "In-progress tasks fetched successfully",
+      tasks: inProgress
     });
 
   } catch (err) {
