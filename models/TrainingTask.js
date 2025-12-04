@@ -38,6 +38,12 @@ const trainingTaskSchema = new Schema(
   enum: ["assigned", "in-progress", "completed"],
   default: "assigned"
 },
+type: {
+  type: String,
+  enum: ["Fresher", "Previous Employee"],
+  required: true
+},
+
 
 
     fromDate: { type: Date, required: true },

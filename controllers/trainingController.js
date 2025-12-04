@@ -174,7 +174,7 @@ function getMonthsDifference(startDate, endDate = new Date()) {
 exports.createTrainingTask = async (req, res) => {
   try {
     let {
-      employeeId,          // single OR multiple
+      employeeId,
       trainingTitle,
       level,
       fromDate,
@@ -193,15 +193,13 @@ exports.createTrainingTask = async (req, res) => {
       trainingName,
       trainer,
 
-      // Newly added fields
+      // NEWLY added fields
       progress,
       status
     } = req.body;
 
     // Convert employeeId to array
-    const employeeIds = Array.isArray(employeeId)
-      ? employeeId
-      : [employeeId];
+    const employeeIds = Array.isArray(employeeId) ? employeeId : [employeeId];
 
     if (!employeeId || employeeIds.length === 0)
       return res.status(400).json({ message: "employeeId is required" });
@@ -221,26 +219,30 @@ exports.createTrainingTask = async (req, res) => {
 
       if (!prof || !personal) continue;
 
-      // Build employee name
+      // Build employee full name
       const employeeName = [
         personal.firstName,
         personal.middleName,
         personal.lastName
-      ].filter(Boolean).join(" ");
+      ]
+        .filter(Boolean)
+        .join(" ");
 
       const managerName =
-        prof.managerName ||
-        prof.experiences?.[0]?.managerName ||
-        "";
+        prof.managerName || prof.experiences?.[0]?.managerName || "";
 
       const department = prof.department || "";
 
       // 🌟 Determine Fresher using joiningDate
-      const joiningDate = prof.joiningDate;
-      const months = getMonthsDifference(new Date(joiningDate));
-      const isFresher = months <= 3; // <= 3 months → fresher
+      const joiningDate = prof.joiningDate ? new Date(prof.joiningDate) : null;
 
-      // Base task data
+      let isFresher = false;
+      if (joiningDate) {
+        const months = getMonthsDifference(joiningDate);
+        isFresher = months <= 3;
+      }
+
+      // Base Task Data (common to all)
       let taskData = {
         employeeId: empId,
         employeeName,
@@ -252,31 +254,48 @@ exports.createTrainingTask = async (req, res) => {
         toDate: new Date(toDate),
         mode,
         duration,
-  status: (status || "assigned").toLowerCase(),
-       progress: progress || 0
-
+        status: (status || "assigned").toLowerCase(),
+        progress: progress || 0
       };
 
-      // 🌟 FRESHER LOGIC (Single or Multiple)
+      // 🌟 FRESHER LOGIC
       if (isFresher) {
         taskData.type = "Fresher";
 
-taskData.extraDetails = {
-  assignedDate: new Date().toISOString(),
-  durationDays: durationDays || parseInt(duration) || 0
-};
+        taskData.extraDetails = {
+          fresherId: empId,
+          fresherName: employeeName,
+          isBulk: employeeIds.length > 1,
+          batch,
+          trainingCategory,
+          selectedCourses: Array.isArray(selectedCourses)
+            ? selectedCourses
+            : [],
+          trainingStartDate: trainingStartDate
+            ? new Date(trainingStartDate)
+            : null,
+          trainingEndDate: trainingEndDate
+            ? new Date(trainingEndDate)
+            : null,
+          durationDays: durationDays || parseInt(duration) || 0,
+          Mode,
+          trainingName,
+          trainer,
+          assignedDate: new Date().toISOString()
+        };
       }
 
-      // 🌟 PREVIOUS EMPLOYEE LOGIC (basic fields only)
-else {
-  taskData.type = "Previous Employee";
+      // 🌟 PREVIOUS EMPLOYEE LOGIC
+      else {
+        taskData.type = "Previous Employee";
 
-taskData.extraDetails = {
-  assignedDate: new Date().toISOString(),
-  durationDays: durationDays || parseInt(duration) || 0
-};
-}
+        taskData.extraDetails = {
+          assignedDate: new Date().toISOString(),
+          durationDays: durationDays || parseInt(duration) || 0
+        };
+      }
 
+      // Create task
       const newTask = await TrainingTask.create(taskData);
       createdTasks.push(newTask);
     }
@@ -286,7 +305,6 @@ taskData.extraDetails = {
       count: createdTasks.length,
       tasks: createdTasks
     });
-
   } catch (err) {
     return res.status(500).json({
       message: "Server Error",
