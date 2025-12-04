@@ -632,7 +632,9 @@ exports.getAllAssignedEmployees = async (req, res) => {
 
     return res.status(200).json({
       message: "Assigned employee tasks fetched successfully",
+      count: tasks.length, 
       tasks
+
     });
 
   } catch (err) {
