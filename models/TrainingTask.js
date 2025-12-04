@@ -33,6 +33,12 @@ const trainingTaskSchema = new Schema(
       enum: ["Beginner", "Intermediate", "Advanced"],
       required: true
     },
+    status: {
+  type: String,
+  enum: ["assigned", "in-progress", "completed"],
+  default: "assigned"
+},
+
 
     fromDate: { type: Date, required: true },
     toDate: { type: Date, required: true },

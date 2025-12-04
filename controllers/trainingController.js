@@ -251,50 +251,30 @@ exports.createTrainingTask = async (req, res) => {
         fromDate: new Date(fromDate),
         toDate: new Date(toDate),
         mode,
-        duration
+        duration,
+  status: (status || "assigned").toLowerCase(),
+       progress: progress || 0
+
       };
 
       // 🌟 FRESHER LOGIC (Single or Multiple)
       if (isFresher) {
         taskData.type = "Fresher";
 
-        taskData.extraDetails = {
-          // NEW REQUIRED FIELDS FOR FRESHERS
-          fresherId: empId,
-          fresherName: employeeName,
-          progress: progress || 0,
-          status: status || "Assigned",
-          isBulk: employeeIds.length > 1, // true if multiple ids
-          assignedDate: new Date().toISOString(),
-
-          // EXISTING FIELDS
-          batch,
-          trainingCategory,
-          selectedCourses: Array.isArray(selectedCourses)
-            ? selectedCourses
-            : [],
-          trainingStartDate: trainingStartDate
-            ? new Date(trainingStartDate)
-            : null,
-          trainingEndDate: trainingEndDate
-            ? new Date(trainingEndDate)
-            : null,
-          durationDays,
-          Mode,
-          trainingName,
-          trainer
-        };
+taskData.extraDetails = {
+  assignedDate: new Date().toISOString(),
+  durationDays: durationDays || parseInt(duration) || 0
+};
       }
 
       // 🌟 PREVIOUS EMPLOYEE LOGIC (basic fields only)
 else {
   taskData.type = "Previous Employee";
 
-  taskData.extraDetails = {
-    assignedDate: new Date().toISOString(),
-    durationDays: durationDays || parseInt(duration) || 0,
-    status: status || "Assigned",
-  };
+taskData.extraDetails = {
+  assignedDate: new Date().toISOString(),
+  durationDays: durationDays || parseInt(duration) || 0
+};
 }
 
       const newTask = await TrainingTask.create(taskData);
@@ -647,18 +627,13 @@ exports.getAllAssignedEmployees = async (req, res) => {
 exports.getCompletedTasks = async (req, res) => {
   try {
     const today = new Date();
+
     const tasks = await TrainingTask.find();
 
+    // Completed = today's date is AFTER the toDate
     const completed = tasks.filter(task => {
-      const assigned = task?.extraDetails?.assignedDate;
-      const durationDays = task?.extraDetails?.durationDays;
-
-      if (!assigned || !durationDays) return false;
-
-      const assignedDate = new Date(assigned);
-      const diffDays = Math.floor((today - assignedDate) / 86400000);
-
-      return diffDays > durationDays;
+      const end = new Date(task.toDate);
+      return today > end;
     });
 
     if (!completed.length) {
@@ -667,6 +642,7 @@ exports.getCompletedTasks = async (req, res) => {
 
     return res.status(200).json({
       message: "Completed tasks fetched successfully",
+      count:completed.length,
       tasks: completed
     });
 
@@ -681,18 +657,14 @@ exports.getCompletedTasks = async (req, res) => {
 exports.getInProgressTasks = async (req, res) => {
   try {
     const today = new Date();
+
     const tasks = await TrainingTask.find();
 
     const inProgress = tasks.filter(task => {
-      const assigned = task?.extraDetails?.assignedDate;
-      const durationDays = task?.extraDetails?.durationDays;
+      const start = new Date(task.fromDate);
+      const end = new Date(task.toDate);
 
-      if (!assigned || !durationDays) return false;
-
-      const assignedDate = new Date(assigned);
-      const diffDays = Math.floor((today - assignedDate) / 86400000);
-
-      return diffDays <= durationDays;
+      return today >= start && today <= end;
     });
 
     if (!inProgress.length) {
@@ -701,6 +673,7 @@ exports.getInProgressTasks = async (req, res) => {
 
     return res.status(200).json({
       message: "In-progress tasks fetched successfully",
+      count: inProgress.length,   // ✅ FIXED
       tasks: inProgress
     });
 
