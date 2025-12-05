@@ -12,7 +12,7 @@ const { setupSwagger } = require("./config/swagger"); // adjust path if needed
 // cron.schedule("* * * * *", () => {
 //   console.log("⏰ Cron Job Running Every Minute!");
 // });
-console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "Loaded" : "Not Loaded");
+// console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "Loaded" : "Not Loaded");
 
 
 // ✅ Import routes
@@ -58,10 +58,11 @@ app.use(express.urlencoded({ extended: true })); // For form-data support
 // }));
 app.use(cors({
   origin: [
+    "*",
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
-        "http://localhost:5176",
+    "http://localhost:5176",
 
 
     "http://localhost:3000",
