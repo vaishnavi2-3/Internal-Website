@@ -4,6 +4,34 @@ const Employee = require("../models/Employee");
 const PersonalDetails = require("../models/personalDetails");
 const crypto = require("crypto");
 const BatchCounter = require("../models/BatchCounter");
+const TrainingSkill = require("../models/TrainingSkill");
+
+exports.createTrainingSkill = async (req, res) => {
+  try {
+    const { title, skills } = req.body;
+
+    if (!title) {
+      return res.status(400).json({ message: "Title is required" });
+    }
+
+    const newSkill = await TrainingSkill.create({
+      title,
+      skills: Array.isArray(skills) ? skills : []
+    });
+
+    return res.status(201).json({
+      message: "Training Skill Created Successfully",
+      data: newSkill
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      message: "Server Error",
+      error: err.message
+    });
+  }
+};
+
 
 async function generateBatchId(department) {
   if (!department) return null;
@@ -260,7 +288,11 @@ exports.createTrainingTask = async (req, res) => {
         .filter(Boolean)
         .join(" ");
 
-      const managerName = prof.managerName || prof.experiences?.[0]?.managerName || "";
+const managerName =
+    prof.managerName ||
+    (prof.experiences?.length > 0 ? prof.experiences[0].managerName : "") ||
+    personal.managerName ||                // NEW FALLBACK
+    "Not Assigned";                        // NEW DEFAULT
       const department = prof.department || "";
         if (isBulkAssign && !finalBatchId) {
     finalBatchId = await generateBatchId(department);
@@ -320,7 +352,9 @@ exports.createTrainingTask = async (req, res) => {
         taskData.type = "Previous Employee";
         taskData.extraDetails = {
           assignedDate: new Date().toISOString(),
-          durationDays: durationDays || parseInt(duration) || 0
+          durationDays: durationDays || parseInt(duration) || 0,
+           batch: finalBatchId   // ⭐ FIXED
+
         };
       }
 

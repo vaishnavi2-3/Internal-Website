@@ -16,7 +16,8 @@ const {
   getEmployeeByDepartmentAndId,
   getAllAssignedEmployees,
   getCompletedTasks,
-  getInProgressTasks
+  getInProgressTasks,
+  createTrainingSkill
 
 
 } = require("../controllers/trainingController");
@@ -33,6 +34,8 @@ router.get("/employee/:employeeId", getEmployeeTasks);
 // HR updates task
 router.put("/update/:taskId", updateTrainingTask);
 router.post("/:taskId/add-exam", addExam);
+router.post("/training-skill", createTrainingSkill);
+
 
 // HR updates exam (marks or title)
 router.put("/:taskId/update-exam/:examId", updateExam);
