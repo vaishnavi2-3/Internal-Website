@@ -20,6 +20,38 @@ const router = express.Router();
 
 const storage = multer.memoryStorage(); // use memory for Azure upload
 const upload = multer({ storage });
+/**
+ * @swagger
+ * /api/personal/save:
+ *   post:
+ *     summary: Save personal details
+ *     tags: [Personal]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               photo:
+ *                 type: string
+ *                 format: binary
+ *               aadharUpload:
+ *                 type: string
+ *                 format: binary
+ *               panUpload:
+ *                 type: string
+ *                 format: binary
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Personal details saved
+ */
 
 // Routes
 router.post(

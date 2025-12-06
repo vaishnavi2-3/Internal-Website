@@ -3,7 +3,6 @@ const bcrypt = require("bcryptjs");
 
 const employeeSchema = new mongoose.Schema({
   fullName: { type: String, required: true },
-
   email: { 
     type: String, 
     required: true, 
@@ -11,18 +10,16 @@ const employeeSchema = new mongoose.Schema({
     lowercase: true,
     trim: true
   },
-
-role: {
+ role: {
   type: String,
   enum: ["Employee", "Manager", "HR", "Admin"],
   default: "Employee",
   set: (v) => v.charAt(0).toUpperCase() + v.slice(1).toLowerCase()
 }, 
 
-  password: { type: String, required: true, select: false },
-  confirmPassword: { type: String, select: false },
-
-  mustChangePassword: { type: Boolean, default: false },
+password: { type: String, required: true, select: false },
+confirmPassword: { type: String, select: false },
+mustChangePassword: { type: Boolean, default: false },
   hasLoggedIn: { type: Boolean, default: false },
 
   loginCount: { type: Number, default: 0 },

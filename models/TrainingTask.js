@@ -43,6 +43,12 @@ type: {
   enum: ["Fresher", "Previous Employee"],
   required: true
 },
+    extraDetails: {
+      type: mongoose.Schema.Types.Mixed, // ⭐ ALLOWS ANY JSON STRUCTURE
+      default: {}
+    },
+    assignedType: { type: String }, // Single | Bulk
+
 
 
 
@@ -60,6 +66,7 @@ type: {
     exams: { type: String },
     marks: { type: String }
   },
+  
   { timestamps: true }
 );
 

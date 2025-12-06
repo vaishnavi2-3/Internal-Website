@@ -2,6 +2,27 @@ const ProfessionalDetails = require("../models/professionalDetails");
 const TrainingTask = require("../models/TrainingTask");
 const Employee = require("../models/Employee");
 const PersonalDetails = require("../models/personalDetails");
+const crypto = require("crypto");
+const BatchCounter = require("../models/BatchCounter");
+
+async function generateBatchId(department) {
+  if (!department) return null;
+
+  // Get first 2 letters of department (remove spaces)
+  const deptCode = department.replace(/\s+/g, "").substring(0, 2).toUpperCase();
+
+  // Find or create counter
+  let counter = await BatchCounter.findOne({ deptCode });
+
+  if (!counter) {
+    counter = await BatchCounter.create({ deptCode, count: 1 });
+  } else {
+    counter.count += 1;
+    await counter.save();
+  }
+
+  return `BA${deptCode}${counter.count}`;
+}
 
 // =====================================================
 // Fetch employee details for auto-fill
@@ -171,6 +192,19 @@ function getMonthsDifference(startDate, endDate = new Date()) {
   return years * 12 + months;
 }
 
+
+// Generate unique Batch ID
+// function generateBatchId() {
+//   const date = new Date().toISOString().split("T")[0].replace(/-/g, "");
+//   const random = crypto.randomBytes(3).toString("hex").toUpperCase();
+//   return `BATCH-${date}-${random}`;
+// }
+
+// Prevent null or empty values
+function isNullOrEmpty(val) {
+  return val === undefined || val === null || val === "" || val === "null";
+}
+
 exports.createTrainingTask = async (req, res) => {
   try {
     let {
@@ -182,7 +216,6 @@ exports.createTrainingTask = async (req, res) => {
       mode,
       duration,
 
-      // FRESHER extra fields
       batch,
       trainingCategory,
       selectedCourses,
@@ -193,24 +226,28 @@ exports.createTrainingTask = async (req, res) => {
       trainingName,
       trainer,
 
-      // NEWLY added fields
       progress,
       status
     } = req.body;
 
-    // Convert employeeId to array
+    // ---- VALIDATE REQUIRED FIELDS ----
+    const requiredFields = { employeeId, trainingTitle, level, fromDate, toDate };
+    for (const field in requiredFields) {
+      if (isNullOrEmpty(requiredFields[field])) {
+        return res.status(400).json({ message: `${field} is required` });
+      }
+    }
+
+    // ---- Convert employeeId into an array ----
     const employeeIds = Array.isArray(employeeId) ? employeeId : [employeeId];
+    const isBulkAssign = employeeIds.length > 1;
 
-    if (!employeeId || employeeIds.length === 0)
-      return res.status(400).json({ message: "employeeId is required" });
-
-    if (!trainingTitle || !level || !fromDate || !toDate)
-      return res.status(400).json({
-        message: "trainingTitle, level, fromDate, toDate are required"
-      });
+    // ---- Auto-generate unique Batch ID if bulk ----
 
     const createdTasks = [];
+     let finalBatchId = null;
 
+    // ---- LOOP EACH EMPLOYEE ----
     for (const empId of employeeIds) {
       const prof = await ProfessionalDetails.findOne({ employeeId: empId });
       const personal = await PersonalDetails.findOne({
@@ -219,30 +256,26 @@ exports.createTrainingTask = async (req, res) => {
 
       if (!prof || !personal) continue;
 
-      // Build employee full name
-      const employeeName = [
-        personal.firstName,
-        personal.middleName,
-        personal.lastName
-      ]
+      const employeeName = [personal.firstName, personal.middleName, personal.lastName]
         .filter(Boolean)
         .join(" ");
 
-      const managerName =
-        prof.managerName || prof.experiences?.[0]?.managerName || "";
-
+      const managerName = prof.managerName || prof.experiences?.[0]?.managerName || "";
       const department = prof.department || "";
+        if (isBulkAssign && !finalBatchId) {
+    finalBatchId = await generateBatchId(department);
+  }
 
-      // 🌟 Determine Fresher using joiningDate
+
+      // ---- Determine Fresher Using Joining Date ----
       const joiningDate = prof.joiningDate ? new Date(prof.joiningDate) : null;
-
       let isFresher = false;
+
       if (joiningDate) {
         const months = getMonthsDifference(joiningDate);
         isFresher = months <= 3;
       }
 
-      // Base Task Data (common to all)
       let taskData = {
         employeeId: empId,
         employeeName,
@@ -255,53 +288,51 @@ exports.createTrainingTask = async (req, res) => {
         mode,
         duration,
         status: (status || "assigned").toLowerCase(),
-        progress: progress || 0
+        progress: progress || 0,
+        batchId: finalBatchId,   // ⭐ added batch id for bulk
+        assignedType: isBulkAssign ? "Bulk" : "Single"
       };
 
-      // 🌟 FRESHER LOGIC
+      // ---- FRESHER LOGIC ----
       if (isFresher) {
         taskData.type = "Fresher";
-
         taskData.extraDetails = {
           fresherId: empId,
           fresherName: employeeName,
-          isBulk: employeeIds.length > 1,
-          batch,
+          batch: finalBatchId || batch,
           trainingCategory,
           selectedCourses: Array.isArray(selectedCourses)
             ? selectedCourses
             : [],
-          trainingStartDate: trainingStartDate
-            ? new Date(trainingStartDate)
-            : null,
-          trainingEndDate: trainingEndDate
-            ? new Date(trainingEndDate)
-            : null,
+          trainingStartDate: trainingStartDate ? new Date(trainingStartDate) : null,
+          trainingEndDate: trainingEndDate ? new Date(trainingEndDate) : null,
           durationDays: durationDays || parseInt(duration) || 0,
           Mode,
           trainingName,
           trainer,
-          assignedDate: new Date().toISOString()
+          assignedDate: new Date().toISOString(),
+          isBulk: isBulkAssign
         };
       }
 
-      // 🌟 PREVIOUS EMPLOYEE LOGIC
+      // ---- PREVIOUS EMPLOYEE LOGIC ----
       else {
         taskData.type = "Previous Employee";
-
         taskData.extraDetails = {
           assignedDate: new Date().toISOString(),
           durationDays: durationDays || parseInt(duration) || 0
         };
       }
 
-      // Create task
       const newTask = await TrainingTask.create(taskData);
       createdTasks.push(newTask);
     }
 
     return res.status(201).json({
-      message: "Training Task Created Successfully",
+      message: isBulkAssign
+        ? "Bulk Training Tasks Created Successfully"
+        : "Training Task Created Successfully",
+      batchId: finalBatchId,
       count: createdTasks.length,
       tasks: createdTasks
     });
@@ -618,25 +649,47 @@ exports.getEmployeeByDepartmentAndId = async (req, res) => {
 };
 exports.getAllAssignedEmployees = async (req, res) => {
   try {
-    const tasks = await TrainingTask.find({})
+    const { type } = req.query; // "bulk" | "single" | undefined
+
+    let filter = {};
+
+    // Apply filters only if query param exists
+    if (type) {
+      const typeLower = type.toLowerCase();
+
+      if (typeLower === "bulk") {
+        filter.assignedType = "Bulk";
+      } else if (typeLower === "single") {
+        filter.assignedType = "Single";
+      } else {
+        return res.status(400).json({
+          message: "Invalid type. Allowed values: bulk, single"
+        });
+      }
+    }
+
+    const tasks = await TrainingTask.find(filter)
       .select(
-        "employeeId employeeName department managerName trainingTitle level fromDate toDate mode duration createdAt updatedAt"
+        "employeeId employeeName department managerName trainingTitle level fromDate toDate mode duration assignedType batchId createdAt updatedAt"
       )
       .sort({ createdAt: -1 });
 
-    if (!tasks || tasks.length === 0) {
+    if (!tasks.length) {
       return res.status(404).json({ message: "No assigned tasks found" });
     }
 
     return res.status(200).json({
       message: "Assigned employee tasks fetched successfully",
-      count: tasks.length, 
+      filterApplied: type || "none",
+      count: tasks.length,
       tasks
-
     });
 
   } catch (err) {
-    return res.status(500).json({ message: "Server Error", error: err.message });
+    return res.status(500).json({
+      message: "Server Error",
+      error: err.message
+    });
   }
 };
 // =====================================================

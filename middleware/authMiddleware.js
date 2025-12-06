@@ -42,4 +42,3 @@ const verifyToken = async (req, res, next) => {
 
 module.exports = {authMiddleware, verifyToken };
 
-// module.exports = authMiddleware;

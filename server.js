@@ -54,6 +54,7 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
+setupSwagger(app);   // 👈 MUST BE HERE
 
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
