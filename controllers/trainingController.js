@@ -31,6 +31,28 @@ exports.createTrainingSkill = async (req, res) => {
     });
   }
 };
+exports.getTrainingSkills = async (req, res) => {
+  try {
+    const skills = await TrainingSkill.find().sort({ createdAt: -1 });
+
+    if (!skills.length) {
+      return res.status(404).json({ message: "No training skills found" });
+    }
+
+    return res.status(200).json({
+      message: "Training Skills Fetched Successfully",
+      count: skills.length,
+      skills
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      message: "Server Error",
+      error: err.message
+    });
+  }
+};
+
 
 
 async function generateBatchId(department) {
@@ -687,7 +709,6 @@ exports.getAllAssignedEmployees = async (req, res) => {
 
     let filter = {};
 
-    // Apply filters only if query param exists
     if (type) {
       const typeLower = type.toLowerCase();
 
@@ -704,7 +725,7 @@ exports.getAllAssignedEmployees = async (req, res) => {
 
     const tasks = await TrainingTask.find(filter)
       .select(
-        "employeeId employeeName department managerName trainingTitle level fromDate toDate mode duration assignedType batchId createdAt updatedAt"
+        "employeeId employeeName department managerName trainingTitle level fromDate toDate mode duration assignedType batchId extraDetails createdAt updatedAt"
       )
       .sort({ createdAt: -1 });
 

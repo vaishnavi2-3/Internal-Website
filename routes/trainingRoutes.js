@@ -9,6 +9,7 @@ const {
   addExam,
   updateExam,
   deleteExam,
+  getTrainingSkills,
   // getAllAssignedEmployees,
   assignTasksToDepartment,
   getAllDepartments,
@@ -35,6 +36,7 @@ router.get("/employee/:employeeId", getEmployeeTasks);
 router.put("/update/:taskId", updateTrainingTask);
 router.post("/:taskId/add-exam", addExam);
 router.post("/training-skill", createTrainingSkill);
+router.get("/skill", getTrainingSkills);
 
 
 // HR updates exam (marks or title)
