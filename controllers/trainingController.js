@@ -5,6 +5,7 @@ const PersonalDetails = require("../models/personalDetails");
 const crypto = require("crypto");
 const BatchCounter = require("../models/BatchCounter");
 const TrainingSkill = require("../models/TrainingSkill");
+const { io } = require("../server");  // adjust path if needed
 
 exports.createTrainingSkill = async (req, res) => {
   try {
@@ -18,6 +19,12 @@ exports.createTrainingSkill = async (req, res) => {
       title,
       skills: Array.isArray(skills) ? skills : []
     });
+        io.emit("trainingSkillCreated", {
+      message: "New training skill added",
+      skill: newSkill
+    });
+
+
 
     return res.status(201).json({
       message: "Training Skill Created Successfully",
@@ -454,35 +461,39 @@ exports.addExam = async (req, res) => {
     const { taskId } = req.params;
     const { exams, marks } = req.body;
 
-    console.log("Received taskId:", taskId);
-
-    const all = await TrainingTask.find().select("_id trainingTitle employeeName");
-    console.log("ALL TASKS IN DB:", all);
-
     const task = await TrainingTask.findById(taskId);
-
-    console.log("FOUND TASK:", task);
 
     if (!task) {
       return res.status(404).json({ 
         message: "Task not found",
-        received: taskId,
-        existingIds: all.map(x => x._id)
       });
     }
 
-    task.exams = exams;
-    task.marks = marks;
+    // Ensure arrays exist
+    if (!Array.isArray(task.exams)) task.exams = [];
+    if (!Array.isArray(task.marks)) task.marks = [];
+
+    // 🔥 Append data instead of replacing
+    if (Array.isArray(exams)) {
+      task.exams.push(...exams);  
+    } else if (exams) {
+      task.exams.push(exams);
+    }
+
+    if (Array.isArray(marks)) {
+      task.marks.push(...marks);
+    } else if (marks) {
+      task.marks.push(marks);
+    }
 
     await task.save();
 
     return res.json({
-      message: "Exam added successfully",
+      message: "Exam added successfully (appended)",
       task
     });
 
   } catch (err) {
-    console.error("Error in addExam:", err);
     return res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
