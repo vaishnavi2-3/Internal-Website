@@ -856,11 +856,11 @@ exports.getInProgressTasks = async (req, res) => {
 };
 exports.getMonthlyAssignedEmployees = async (req, res) => {
   try {
-    const { type } = req.query; // bulk | single | none
+    const { type, department } = req.query; // bulk | single | none AND department
 
     let match = {};
 
-    // If filter applied
+    // Filter by assignedType
     if (type) {
       const typeLower = type.toLowerCase();
       if (typeLower === "bulk") {
@@ -874,44 +874,79 @@ exports.getMonthlyAssignedEmployees = async (req, res) => {
       }
     }
 
-    // ----------------------------
-    // 1️⃣ Monthly wise unique employee list + count
-    // ----------------------------
-    const monthlyData = await TrainingTask.aggregate([
-      { $match: match },
-
-      {
-        $addFields: {
-          month: { $dateToString: { format: "%Y-%m", date: "$createdAt" } }
-        }
-      },
-
-      {
-        $group: {
-          _id: "$month",
-          employees: {
-            $addToSet: {
-              employeeId: "$employeeId",
-              employeeName: "$employeeName"
-            }
-          }
-        }
-      },
-
-      {
-        $project: {
-          month: "$_id",
-          employees: 1,
-          uniqueEmployeeCount: { $size: "$employees" },
-          _id: 0
-        }
-      },
-
-      { $sort: { month: -1 } }
-    ]);
+    // ⭐ Filter by department (NEW)
+    if (department) {
+      match.department = department;
+    }
 
     // ----------------------------
-    // 2️⃣ Total Unique Assigned Employees (overall)
+    // Monthly wise unique employee list + count
+    // ----------------------------
+// ----------------------------
+// Monthly wise unique employees grouped by department
+// ----------------------------
+const monthlyData = await TrainingTask.aggregate([
+  { $match: match },
+
+  // 1️⃣ Add month field
+  {
+    $addFields: {
+      month: { $dateToString: { format: "%Y-%m", date: "$createdAt" } }
+    }
+  },
+
+  // 2️⃣ Group by month + department
+  {
+    $group: {
+      _id: { month: "$month", department: "$department" },
+      employees: {
+        $addToSet: {
+          employeeId: "$employeeId",
+          employeeName: "$employeeName"
+        }
+      }
+    }
+  },
+
+  // 3️⃣ Prepare department group structure
+  {
+    $project: {
+      month: "$_id.month",
+      department: "$_id.department",
+      employees: 1,
+      uniqueEmployeeCount: { $size: "$employees" },
+      _id: 0
+    }
+  },
+
+  // 4️⃣ Group by month → push departments inside month
+  {
+    $group: {
+      _id: "$month",
+      departments: {
+        $push: {
+          department: "$department",
+          employees: "$employees",
+          uniqueEmployeeCount: "$uniqueEmployeeCount"
+        }
+      }
+    }
+  },
+
+  // 5️⃣ Clean output
+  {
+    $project: {
+      month: "$_id",
+      departments: 1,
+      _id: 0
+    }
+  },
+
+  { $sort: { month: -1 } }
+]);
+
+    // ----------------------------
+    // Total unique employees
     // ----------------------------
     const totalEmployeesData = await TrainingTask.aggregate([
       { $match: match },
@@ -937,7 +972,8 @@ exports.getMonthlyAssignedEmployees = async (req, res) => {
     return res.status(200).json({
       message: "Monthly employee assignment report fetched successfully",
       filterApplied: type || "none",
-      totalUniqueEmployees,   // 🔥 Added here
+      departmentFilter: department || "none",
+      totalUniqueEmployees,
       monthlyData
     });
 
