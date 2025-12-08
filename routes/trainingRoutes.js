@@ -7,6 +7,7 @@ const {
   getEmployeeTasks,
   updateTrainingTask,
   addExam,
+  getExamDetails,
   updateExam,
   deleteExam,
   getTrainingSkills,
@@ -35,6 +36,8 @@ router.get("/employee/:employeeId", getEmployeeTasks);
 // HR updates task
 router.put("/update/:taskId", updateTrainingTask);
 router.post("/:taskId/add-exam", addExam);
+router.get("/tasks/:taskId/exam", getExamDetails);
+
 router.post("/training-skill", createTrainingSkill);
 router.get("/skill", getTrainingSkills);
 

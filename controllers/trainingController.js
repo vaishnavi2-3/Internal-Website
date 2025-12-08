@@ -454,9 +454,22 @@ exports.addExam = async (req, res) => {
     const { taskId } = req.params;
     const { exams, marks } = req.body;
 
-    const task = await TrainingTask.findOne({ _id: taskId });  // FIXED
+    console.log("Received taskId:", taskId);
 
-    if (!task) return res.status(404).json({ message: "Task not found" });
+    const all = await TrainingTask.find().select("_id trainingTitle employeeName");
+    console.log("ALL TASKS IN DB:", all);
+
+    const task = await TrainingTask.findById(taskId);
+
+    console.log("FOUND TASK:", task);
+
+    if (!task) {
+      return res.status(404).json({ 
+        message: "Task not found",
+        received: taskId,
+        existingIds: all.map(x => x._id)
+      });
+    }
 
     task.exams = exams;
     task.marks = marks;
@@ -469,9 +482,33 @@ exports.addExam = async (req, res) => {
     });
 
   } catch (err) {
+    console.error("Error in addExam:", err);
     return res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+exports.getExamDetails = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+
+    const task = await TrainingTask.findById(taskId).select("exams marks trainingTitle employeeName");
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    return res.json({
+      message: "Exam details fetched successfully",
+      exams: task.exams || [],
+      marks: task.marks || {},
+      task
+    });
+
+  } catch (err) {
+    console.error("Error in getExamDetails:", err);
+    return res.status(500).json({ message: "Server Error", error: err.message });
+  }
+};
+
 
 // =====================================================
 // Update Exam (UUID-safe)
