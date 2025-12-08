@@ -63,8 +63,10 @@ type: {
 
     duration: { type: String, required: true },
 
-    exams: { type: String },
-    marks: { type: String }
+exams: {
+  type: [examSchema],
+  default: []
+}
   },
   
   { timestamps: true }

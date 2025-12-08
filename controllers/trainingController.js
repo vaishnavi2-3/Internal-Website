@@ -459,42 +459,41 @@ exports.updateTrainingTask = async (req, res) => {
 exports.addExam = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { exams, marks } = req.body;
+    const { exam, marks } = req.body;
 
     const task = await TrainingTask.findById(taskId);
-
     if (!task) {
-      return res.status(404).json({ 
-        message: "Task not found",
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    // Validate fields
+    if (!exam || !marks) {
+      return res.status(400).json({
+        message: "Both 'exam' and 'marks' are required",
+        received: req.body
       });
     }
 
-    // Ensure arrays exist
-    if (!Array.isArray(task.exams)) task.exams = [];
-    if (!Array.isArray(task.marks)) task.marks = [];
-
-    // 🔥 Append data instead of replacing
-    if (Array.isArray(exams)) {
-      task.exams.push(...exams);  
-    } else if (exams) {
-      task.exams.push(exams);
+    // Ensure exams array exists
+    if (!Array.isArray(task.exams)) {
+      task.exams = [];
     }
 
-    if (Array.isArray(marks)) {
-      task.marks.push(...marks);
-    } else if (marks) {
-      task.marks.push(marks);
-    }
+    // 🔥 APPEND new exam object (not replace)
+    task.exams.push({ exam, marks });
 
     await task.save();
 
     return res.json({
-      message: "Exam added successfully (appended)",
+      message: "Exam added successfully (stored without replacing old ones)",
       task
     });
 
   } catch (err) {
-    return res.status(500).json({ message: "Server Error", error: err.message });
+    return res.status(500).json({
+      message: "Server Error",
+      error: err.message
+    });
   }
 };
 exports.getExamDetails = async (req, res) => {
