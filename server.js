@@ -7,8 +7,8 @@ const fs=require('fs');
 const { BlobServiceClient } = require("@azure/storage-blob");
 const cron = require("node-cron");
 const { setupSwagger } = require("./config/swagger"); // adjust path if needed
-const http = require("http");
-const { Server } = require("socket.io");
+// const http = require("http");
+// const { Server } = require("socket.io");
 
 // Create HTTP server manually
 
@@ -48,43 +48,43 @@ dotenv.config();
 connectDB();
 
 const app = express();
-const server = http.createServer(app);
+// const server = http.createServer(app);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // For form-data support
-// app.use(cors({
-//   origin: (origin, callback) => {
-//     callback(null, origin || "*"); // allow all origins
-//   },
-//   methods: ["GET", "POST", "PUT", "DELETE"],
-//   allowedHeaders: ["Content-Type", "Authorization"],
-//   credentials: true
-// }));
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST","PUT", "DELETE"],
-      allowedHeaders: ["Content-Type", "Authorization"],
-      credentials: true
+app.use(cors({
+  origin: (origin, callback) => {
+    callback(null, origin || "*"); // allow all origins
+  },
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+}));
+// const io = new Server(server, {
+//   cors: {
+//     origin: "*",
+//     methods: ["GET", "POST","PUT", "DELETE"],
+//       allowedHeaders: ["Content-Type", "Authorization"],
+//       credentials: true
 
-  }
-});
-io.on("connection", (socket) => {
-  console.log("🟢 User connected:", socket.id);
+//   }
+// });
+// io.on("connection", (socket) => {
+//   console.log("🟢 User connected:", socket.id);
 
-  // When user disconnects
-  socket.on("disconnect", () => {
-    console.log("🔴 User disconnected:", socket.id);
-  });
+//   // When user disconnects
+//   socket.on("disconnect", () => {
+//     console.log("🔴 User disconnected:", socket.id);
+//   });
 
-  // Receive event from client
-  socket.on("sendMessage", (data) => {
-    console.log("Message Received:", data);
+//   // Receive event from client
+//   socket.on("sendMessage", (data) => {
+//     console.log("Message Received:", data);
 
-    // Broadcast to other clients
-    io.emit("receiveMessage", data);
-  });
-});
+//     // Broadcast to other clients
+//     io.emit("receiveMessage", data);
+//   });
+// });
 
 
 setupSwagger(app);   // 👈 MUST BE HERE
@@ -129,5 +129,5 @@ require("./cron/reminderCleaner");   // <-- ★ IMPORTANT
 app.get("/", (req, res) => res.send("Server running OK 🚀"));
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-module.exports = { io };
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+// module.exports = { io };

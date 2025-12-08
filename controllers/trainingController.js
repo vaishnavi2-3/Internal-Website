@@ -5,7 +5,7 @@ const PersonalDetails = require("../models/personalDetails");
 const crypto = require("crypto");
 const BatchCounter = require("../models/BatchCounter");
 const TrainingSkill = require("../models/TrainingSkill");
-const { io } = require("../server");  // adjust path if needed
+// const { io } = require("../server");  // adjust path if needed
 
 exports.createTrainingSkill = async (req, res) => {
   try {
@@ -19,10 +19,10 @@ exports.createTrainingSkill = async (req, res) => {
       title,
       skills: Array.isArray(skills) ? skills : []
     });
-        io.emit("trainingSkillCreated", {
-      message: "New training skill added",
-      skill: newSkill
-    });
+    //     io.emit("trainingSkillCreated", {
+    //   message: "New training skill added",
+    //   skill: newSkill
+    // });
 
 
 
