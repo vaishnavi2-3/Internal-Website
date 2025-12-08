@@ -509,7 +509,7 @@ exports.getExamDetails = async (req, res) => {
     return res.json({
       message: "Exam details fetched successfully",
       // exams: task.exams || [],
-      marks: task.marks || {},
+      // marks: task.marks || {},
       task
     });
 
