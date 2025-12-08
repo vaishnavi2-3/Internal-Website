@@ -844,3 +844,97 @@ exports.getInProgressTasks = async (req, res) => {
     return res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+exports.getMonthlyAssignedEmployees = async (req, res) => {
+  try {
+    const { type } = req.query; // bulk | single | none
+
+    let match = {};
+
+    // If filter applied
+    if (type) {
+      const typeLower = type.toLowerCase();
+      if (typeLower === "bulk") {
+        match.assignedType = "Bulk";
+      } else if (typeLower === "single") {
+        match.assignedType = "Single";
+      } else {
+        return res.status(400).json({
+          message: "Invalid type. Allowed values: bulk, single"
+        });
+      }
+    }
+
+    // ----------------------------
+    // 1️⃣ Monthly wise unique employee list + count
+    // ----------------------------
+    const monthlyData = await TrainingTask.aggregate([
+      { $match: match },
+
+      {
+        $addFields: {
+          month: { $dateToString: { format: "%Y-%m", date: "$createdAt" } }
+        }
+      },
+
+      {
+        $group: {
+          _id: "$month",
+          employees: {
+            $addToSet: {
+              employeeId: "$employeeId",
+              employeeName: "$employeeName"
+            }
+          }
+        }
+      },
+
+      {
+        $project: {
+          month: "$_id",
+          employees: 1,
+          uniqueEmployeeCount: { $size: "$employees" },
+          _id: 0
+        }
+      },
+
+      { $sort: { month: -1 } }
+    ]);
+
+    // ----------------------------
+    // 2️⃣ Total Unique Assigned Employees (overall)
+    // ----------------------------
+    const totalEmployeesData = await TrainingTask.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          employees: { $addToSet: "$employeeId" }
+        }
+      },
+      {
+        $project: {
+          totalUniqueEmployees: { $size: "$employees" },
+          _id: 0
+        }
+      }
+    ]);
+
+    const totalUniqueEmployees =
+      totalEmployeesData.length > 0
+        ? totalEmployeesData[0].totalUniqueEmployees
+        : 0;
+
+    return res.status(200).json({
+      message: "Monthly employee assignment report fetched successfully",
+      filterApplied: type || "none",
+      totalUniqueEmployees,   // 🔥 Added here
+      monthlyData
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      message: "Server Error",
+      error: err.message
+    });
+  }
+};

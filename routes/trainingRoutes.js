@@ -19,13 +19,15 @@ const {
   getAllAssignedEmployees,
   getCompletedTasks,
   getInProgressTasks,
-  createTrainingSkill
+  createTrainingSkill,
+  getMonthlyAssignedEmployees
 
 
 } = require("../controllers/trainingController");
 
 // Auto-fill manager, dept, employeeName
 router.get("/employee/:employeeId/details", getEmployeeDetails);
+router.get("/assigned-employees/monthly", getMonthlyAssignedEmployees);
 
 // HR creates task
 router.post("/create", createTrainingTask);
