@@ -24,27 +24,26 @@ exports.getEmployeeAssignedTasks = async (req, res) => {
       ]
     });
 
-    // ⭐⭐ CALCULATE AVERAGE MARKS FOR EACH TASK ⭐⭐
+    // ⭐⭐ CALCULATE AVERAGE MARKS WITHOUT PERCENTAGE SIGN ⭐⭐
     const updatedTasks = tasks.map(task => {
       if (task.exams && task.exams.length > 0) {
         
         const total = task.exams.reduce((sum, exam) => {
-          // handle "70%", "80.5%", "90", "85" safely
           const numeric = parseFloat(exam.marks.toString().replace("%", ""));
           return sum + (isNaN(numeric) ? 0 : numeric);
         }, 0);
 
-        const avg = (total / task.exams.length).toFixed(2) + "%";
+        const avg = total / task.exams.length; // no % symbol
 
         return {
           ...task._doc,
-          averageMarks: avg
+          averageMarks: Number(avg.toFixed(2)) // return number like 80.5
         };
       }
 
       return {
         ...task._doc,
-        averageMarks: "No Exams"
+        averageMarks: null // or 0 or "No Exams" as you prefer
       };
     });
 
@@ -59,4 +58,3 @@ exports.getEmployeeAssignedTasks = async (req, res) => {
     res.status(500).json({ msg: "Server error" });
   }
 };
-// module.exports = employeeTaskAuth;
