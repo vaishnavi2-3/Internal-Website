@@ -311,7 +311,15 @@ exports.createTrainingTask = async (req, res) => {
         officialEmail: prof?.officialEmail
       });
 
-      if (!prof || !personal) continue;
+if (!prof) {
+  console.log("❌ Professional details not found for employee:", empId);
+  continue;
+}
+
+if (!prof.officialEmail) {
+  console.log("❌ prof.officialEmail missing for:", empId, prof);
+  continue;
+}
 
       const employeeName = [personal.firstName, personal.middleName, personal.lastName]
         .filter(Boolean)
@@ -337,22 +345,25 @@ const managerName =
         isFresher = months <= 3;
       }
 
-      let taskData = {
-        employeeId: empId,
-        employeeName,
-        department,
-        managerName,
-        trainingTitle,
-        level,
-        fromDate: new Date(fromDate),
-        toDate: new Date(toDate),
-        mode,
-        duration,
-        status: (status || "assigned").toLowerCase(),
-        progress: progress || 0,
-        batchId: finalBatchId,   // ⭐ added batch id for bulk
-        assignedType: isBulkAssign ? "Bulk" : "Single"
-      };
+let taskData = {
+  employeeId: empId,
+  employeeName,
+  department,
+  managerName,
+  trainingTitle,
+  level,
+  fromDate: new Date(fromDate),
+  toDate: new Date(toDate),
+  mode,
+  duration,
+  status: (status || "assigned").toLowerCase(),
+  progress: progress || 0,
+  batchId: finalBatchId,
+  assignedType: isBulkAssign ? "Bulk" : "Single",
+
+  // ⭐⭐ REQUIRED FIX ⭐⭐
+  officialEmail: prof.officialEmail
+};
 
       // ---- FRESHER LOGIC ----
       if (isFresher) {

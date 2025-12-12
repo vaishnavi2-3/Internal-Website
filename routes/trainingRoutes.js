@@ -20,10 +20,15 @@ const {
   getCompletedTasks,
   getInProgressTasks,
   createTrainingSkill,
-  getMonthlyAssignedEmployees
+  getMonthlyAssignedEmployees,
+  // getEmployeeAssignedTasks
 
 
 } = require("../controllers/trainingController");
+// const employeeTaskAuth  = require("../middleware/employeeTaskAuth");
+const {verifyToken}  = require("../middleware/authMiddleware");
+
+const {getEmployeeAssignedTasks }  = require("../controllers/employeeTaskController");
 
 // Auto-fill manager, dept, employeeName
 router.get("/employee/:employeeId/details", getEmployeeDetails);
@@ -31,6 +36,7 @@ router.get("/assigned-employees/monthly", getMonthlyAssignedEmployees);
 
 // HR creates task
 router.post("/create", createTrainingTask);
+router.get("/employee/my-tasks", verifyToken, getEmployeeAssignedTasks);
 
 // Employee dashboard fetch
 router.get("/employee/:employeeId", getEmployeeTasks);
@@ -60,6 +66,7 @@ router.get("/departments/:departmentName/:employeeId",getEmployeeByDepartmentAnd
 router.get("/assigned", getAllAssignedEmployees);
 router.get("/tasks/completed", getCompletedTasks);
 router.get("/tasks/in-progress", getInProgressTasks);
+// 🟢 Get assigned tasks for the logged-in employee
 
 
 module.exports = router;

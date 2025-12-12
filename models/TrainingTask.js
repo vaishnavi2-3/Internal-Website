@@ -48,6 +48,7 @@ type: {
       default: {}
     },
     assignedType: { type: String }, // Single | Bulk
+    officialEmail: { type: String, required: true },
 
 
 
