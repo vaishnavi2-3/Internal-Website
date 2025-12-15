@@ -27,6 +27,7 @@ const trainingTaskSchema = new Schema(
     managerName: { type: String, default: "" },
 
     trainingTitle: { type: String },
+       joiningDate: Date,   // ⭐ ADD THIS
 
     level: {
       type: String,

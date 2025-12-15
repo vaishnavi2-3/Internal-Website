@@ -7,24 +7,58 @@ const BatchCounter = require("../models/BatchCounter");
 const TrainingSkill = require("../models/TrainingSkill");
 // const { io } = require("../server");  // adjust path if needed
 
+// exports.createTrainingSkill = async (req, res) => {
+//   try {
+//     const { title, skills } = req.body;
+
+//     if (!title) {
+//       return res.status(400).json({ message: "Title is required" });
+//     }
+
+//     const newSkill = await TrainingSkill.create({
+//       title,
+//       skills: Array.isArray(skills) ? skills : []
+//     });
+//     //     io.emit("trainingSkillCreated", {
+//     //   message: "New training skill added",
+//     //   skill: newSkill
+//     // });
+
+
+
+//     return res.status(201).json({
+//       message: "Training Skill Created Successfully",
+//       data: newSkill
+//     });
+
+//   } catch (err) {
+//     return res.status(500).json({
+//       message: "Server Error",
+//       error: err.message
+//     });
+//   }
+// };
 exports.createTrainingSkill = async (req, res) => {
   try {
-    const { title, skills } = req.body;
+    const { title, skills, confirmed } = req.body;
+
+    // 🛑 user did not click YES
+    if (!confirmed) {
+      return res.status(400).json({
+        message: "Creation cancelled by user"
+      });
+    }
 
     if (!title) {
-      return res.status(400).json({ message: "Title is required" });
+      return res.status(400).json({
+        message: "Title is required"
+      });
     }
 
     const newSkill = await TrainingSkill.create({
       title,
       skills: Array.isArray(skills) ? skills : []
     });
-    //     io.emit("trainingSkillCreated", {
-    //   message: "New training skill added",
-    //   skill: newSkill
-    // });
-
-
 
     return res.status(201).json({
       message: "Training Skill Created Successfully",
@@ -38,6 +72,7 @@ exports.createTrainingSkill = async (req, res) => {
     });
   }
 };
+
 exports.getTrainingSkills = async (req, res) => {
   try {
     const skills = await TrainingSkill.find().sort({ createdAt: -1 });
@@ -132,12 +167,7 @@ function getMonthsDifference(startDate, endDate = new Date()) {
 }
 
 
-// Generate unique Batch ID
-// function generateBatchId() {
-//   const date = new Date().toISOString().split("T")[0].replace(/-/g, "");
-//   const random = crypto.randomBytes(3).toString("hex").toUpperCase();
-//   return `BATCH-${date}-${random}`;
-// }
+
 
 // Prevent null or empty values
 function isNullOrEmpty(val) {
@@ -181,45 +211,59 @@ exports.createTrainingTask = async (req, res) => {
     const employeeIds = Array.isArray(employeeId) ? employeeId : [employeeId];
     const isBulkAssign = employeeIds.length > 1;
 
-    // ---- Auto-generate unique Batch ID if bulk ----
-
     const createdTasks = [];
-     let finalBatchId = null;
+    let finalBatchId = null;
 
     // ---- LOOP EACH EMPLOYEE ----
     for (const empId of employeeIds) {
-      const prof = await ProfessionalDetails.findOne({ employeeId: empId });
-      const personal = await PersonalDetails.findOne({
-        officialEmail: prof?.officialEmail
+
+      // 🔒 BLOCK IF EMPLOYEE ALREADY IN TRAINING
+      const existingTask = await TrainingTask.findOne({
+        employeeId: empId,
+        status: { $in: ["assigned", "in-progress"] }
       });
 
-if (!prof) {
-  console.log("❌ Professional details not found for employee:", empId);
-  continue;
-}
+      if (existingTask) {
+        return res.status(400).json({
+          message: `Employee ${empId} is already in training. Complete the current training before assigning a new one.`,
+          existingTraining: {
+            trainingTitle: existingTask.trainingTitle,
+            status: existingTask.status,
+            fromDate: existingTask.fromDate,
+            toDate: existingTask.toDate
+          }
+        });
+      }
 
-if (!prof.officialEmail) {
-  console.log("❌ prof.officialEmail missing for:", empId, prof);
-  continue;
-}
+      // ---- FETCH EMPLOYEE DETAILS ----
+      const prof = await ProfessionalDetails.findOne({ employeeId: empId });
+      if (!prof || !prof.officialEmail) {
+        console.log("❌ Professional details missing for employee:", empId);
+        continue;
+      }
 
-      const employeeName = [personal.firstName, personal.middleName, personal.lastName]
+      const personal = await PersonalDetails.findOne({
+        officialEmail: prof.officialEmail
+      });
+
+      const employeeName = [personal?.firstName, personal?.middleName, personal?.lastName]
         .filter(Boolean)
         .join(" ");
 
-const managerName =
-    prof.managerName ||
-    (prof.experiences?.length > 0 ? prof.experiences[0].managerName : "") ||
-    personal.managerName ||                // NEW FALLBACK
-    "Not Assigned";                        // NEW DEFAULT
+      const managerName =
+        prof.managerName ||
+        (prof.experiences?.length > 0 ? prof.experiences[0].managerName : "") ||
+        personal?.managerName ||
+        "Not Assigned";
+
       const department = prof.department || "";
-        if (isBulkAssign && !finalBatchId) {
-    finalBatchId = await generateBatchId(department);
-  }
 
+      if (isBulkAssign && !finalBatchId) {
+        finalBatchId = await generateBatchId(department);
+      }
 
-      // ---- Determine Fresher Using Joining Date ----
-      const joiningDate = prof.joiningDate ? new Date(prof.joiningDate) : null;
+      // ---- JOINING DATE & FRESHER LOGIC ----
+      const joiningDate = prof.dateOfJoining ? new Date(prof.dateOfJoining) : null;
       let isFresher = false;
 
       if (joiningDate) {
@@ -227,37 +271,36 @@ const managerName =
         isFresher = months <= 3;
       }
 
-let taskData = {
-  employeeId: empId,
-  employeeName,
-  department,
-  managerName,
-  trainingTitle,
-  level,
-  fromDate: new Date(fromDate),
-  toDate: new Date(toDate),
-  mode,
-  duration,
-  status: (status || "assigned").toLowerCase(),
-  progress: progress || 0,
-  batchId: finalBatchId,
-  assignedType: isBulkAssign ? "Bulk" : "Single",
+      // ---- BASE TASK DATA ----
+      let taskData = {
+        employeeId: empId,
+        employeeName,
+        department,
+        managerName,
+        trainingTitle,
+        level,
+        fromDate: new Date(fromDate),
+        toDate: new Date(toDate),
+        mode,
+        duration,
+        status: (status || "assigned").toLowerCase(),
+        progress: progress || 0,
+        batchId: finalBatchId,
+        assignedType: isBulkAssign ? "Bulk" : "Single",
+        officialEmail: prof.officialEmail,
+        dateOfJoining: joiningDate
+      };
 
-  // ⭐⭐ REQUIRED FIX ⭐⭐
-  officialEmail: prof.officialEmail
-};
-
-      // ---- FRESHER LOGIC ----
+      // ---- FRESHER ----
       if (isFresher) {
         taskData.type = "Fresher";
         taskData.extraDetails = {
           fresherId: empId,
           fresherName: employeeName,
+          dateOfJoining: joiningDate,
           batch: finalBatchId || batch,
           trainingCategory,
-          selectedCourses: Array.isArray(selectedCourses)
-            ? selectedCourses
-            : [],
+          selectedCourses: Array.isArray(selectedCourses) ? selectedCourses : [],
           trainingStartDate: trainingStartDate ? new Date(trainingStartDate) : null,
           trainingEndDate: trainingEndDate ? new Date(trainingEndDate) : null,
           durationDays: durationDays || parseInt(duration) || 0,
@@ -269,14 +312,14 @@ let taskData = {
         };
       }
 
-      // ---- PREVIOUS EMPLOYEE LOGIC ----
+      // ---- PREVIOUS EMPLOYEE ----
       else {
         taskData.type = "Previous Employee";
         taskData.extraDetails = {
+          dateOfJoining: joiningDate,
           assignedDate: new Date().toISOString(),
           durationDays: durationDays || parseInt(duration) || 0,
-           batch: finalBatchId   // ⭐ FIXED
-
+          batch: finalBatchId
         };
       }
 
@@ -292,6 +335,7 @@ let taskData = {
       count: createdTasks.length,
       tasks: createdTasks
     });
+
   } catch (err) {
     return res.status(500).json({
       message: "Server Error",
