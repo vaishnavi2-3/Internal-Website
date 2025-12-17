@@ -5,64 +5,82 @@ const PersonalDetails = require("../models/personalDetails");
 const crypto = require("crypto");
 const BatchCounter = require("../models/BatchCounter");
 const TrainingSkill = require("../models/TrainingSkill");
-// const { io } = require("../server");  // adjust path if needed
 
-// exports.createTrainingSkill = async (req, res) => {
-//   try {
-//     const { title, skills } = req.body;
-
-//     if (!title) {
-//       return res.status(400).json({ message: "Title is required" });
-//     }
-
-//     const newSkill = await TrainingSkill.create({
-//       title,
-//       skills: Array.isArray(skills) ? skills : []
-//     });
-//     //     io.emit("trainingSkillCreated", {
-//     //   message: "New training skill added",
-//     //   skill: newSkill
-//     // });
-
-
-
-//     return res.status(201).json({
-//       message: "Training Skill Created Successfully",
-//       data: newSkill
-//     });
-
-//   } catch (err) {
-//     return res.status(500).json({
-//       message: "Server Error",
-//       error: err.message
-//     });
-//   }
-// };
 exports.createTrainingSkill = async (req, res) => {
   try {
     const { title, skills, confirmed } = req.body;
 
-    // 🛑 user did not click YES
-    if (!confirmed) {
-      return res.status(400).json({
-        message: "Creation cancelled by user"
-      });
-    }
+    // ✅ Normalize confirmed (fixes Postman / frontend issue)
+    const isConfirmed = confirmed === true || confirmed === "true";
 
     if (!title) {
-      return res.status(400).json({
-        message: "Title is required"
-      });
+      return res.status(400).json({ message: "Title is required" });
     }
 
-    const newSkill = await TrainingSkill.create({
+    // 1️⃣ Always create skill
+    const trainingSkill = await TrainingSkill.create({
       title,
       skills: Array.isArray(skills) ? skills : []
     });
 
+    // 2️⃣ Calculate date threshold
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+    let employees = [];
+
+    // ✅ YES → Freshers only (≤ 3 months)
+    if (isConfirmed) {
+      employees = await ProfessionalDetails.find({
+        dateOfJoining: { $gte: threeMonthsAgo }
+      }).select("employeeId");
+    }
+    // ✅ NO → Previous employees only (> 3 months)
+    else {
+      employees = await ProfessionalDetails.find({
+        dateOfJoining: { $lt: threeMonthsAgo }
+      }).select("employeeId");
+    }
+
+    if (!employees.length) {
+      return res.status(201).json({
+        message: "Training Skill created. No eligible employees found.",
+        trainingSkill
+      });
+    }
+
+    const employeeIds = employees.map(e => e.employeeId);
+
+    // 3️⃣ Prepare task assignment
+    const taskReq = {
+      body: {
+        employeeId: employeeIds,
+        trainingTitle: title,
+        level: isConfirmed ? "Beginner" : "Advanced",
+        fromDate: new Date(),
+        toDate: new Date(new Date().setMonth(new Date().getMonth() + 1)),
+        mode: "Online",
+        duration: "30",
+        status: "assigned",
+
+        // ✅ ALWAYS SENT NOW
+        assignTo: isConfirmed ? "FRESHER" : "PREVIOUS"
+      }
+    };
+
+    const fakeRes = {
+      status: () => ({ json: () => {} }),
+      json: () => {}
+    };
+
+    await exports.createTrainingTask(taskReq, fakeRes);
+
     return res.status(201).json({
-      message: "Training Skill Created Successfully",
-      data: newSkill
+      message: isConfirmed
+        ? "Training Skill created & assigned to Freshers"
+        : "Training Skill created & assigned to Previous Employees",
+      trainingSkill,
+      assignedCount: employeeIds.length
     });
 
   } catch (err) {
@@ -196,7 +214,8 @@ exports.createTrainingTask = async (req, res) => {
       trainer,
 
       progress,
-      status
+      status,
+      assignTo
     } = req.body;
 
     // ---- VALIDATE REQUIRED FIELDS ----
@@ -207,15 +226,22 @@ exports.createTrainingTask = async (req, res) => {
       }
     }
 
+    // fallback for manual assignment
+    assignTo = assignTo || "MANUAL";
+
     // ---- Convert employeeId into an array ----
     const employeeIds = Array.isArray(employeeId) ? employeeId : [employeeId];
     const isBulkAssign = employeeIds.length > 1;
 
     const createdTasks = [];
+    const skippedEmployees = [];   // ⭐ track skipped ones
     let finalBatchId = null;
 
     // ---- LOOP EACH EMPLOYEE ----
-    for (const empId of employeeIds) {
+    for (const empIdRaw of employeeIds) {
+      let empId = String(empIdRaw).trim();
+
+      // normalize numeric IDs → EMPxxx
 
       // 🔒 BLOCK IF EMPLOYEE ALREADY IN TRAINING
       const existingTask = await TrainingTask.findOne({
@@ -224,35 +250,46 @@ exports.createTrainingTask = async (req, res) => {
       });
 
       if (existingTask) {
-        return res.status(400).json({
-          message: `Employee ${empId} is already in training. Complete the current training before assigning a new one.`,
-          existingTraining: {
-            trainingTitle: existingTask.trainingTitle,
-            status: existingTask.status,
-            fromDate: existingTask.fromDate,
-            toDate: existingTask.toDate
-          }
-        });
-      }
-
-      // ---- FETCH EMPLOYEE DETAILS ----
-      const prof = await ProfessionalDetails.findOne({ employeeId: empId });
-      if (!prof || !prof.officialEmail) {
-        console.log("❌ Professional details missing for employee:", empId);
+        skippedEmployees.push({ empId, reason: "Already in training" });
         continue;
       }
 
+      // ---- FETCH PROFESSIONAL DETAILS ----
+      const prof = await ProfessionalDetails.findOne({ employeeId: empId });
+
+      if (!prof || !prof.officialEmail || !prof.dateOfJoining) {
+        skippedEmployees.push({ empId, reason: "Professional details missing" });
+        continue;
+      }
+
+      const joiningDate = new Date(prof.dateOfJoining);
+      const months = getMonthsDifference(joiningDate);
+
+      // ---- APPLY ASSIGNMENT RULES ----
+      if (assignTo === "FRESHER" && months > 3) {
+        skippedEmployees.push({ empId, reason: "Not a fresher" });
+        continue;
+      }
+
+      if (assignTo === "PREVIOUS" && months <= 3) {
+        skippedEmployees.push({ empId, reason: "Is a fresher" });
+        continue;
+      }
+
+      // ---- FETCH PERSONAL DETAILS ----
       const personal = await PersonalDetails.findOne({
         officialEmail: prof.officialEmail
       });
 
-      const employeeName = [personal?.firstName, personal?.middleName, personal?.lastName]
-        .filter(Boolean)
-        .join(" ");
+      const employeeName = [
+        personal?.firstName,
+        personal?.middleName,
+        personal?.lastName
+      ].filter(Boolean).join(" ");
 
       const managerName =
         prof.managerName ||
-        (prof.experiences?.length > 0 ? prof.experiences[0].managerName : "") ||
+        (prof.experiences?.length ? prof.experiences[0].managerName : "") ||
         personal?.managerName ||
         "Not Assigned";
 
@@ -262,17 +299,8 @@ exports.createTrainingTask = async (req, res) => {
         finalBatchId = await generateBatchId(department);
       }
 
-      // ---- JOINING DATE & FRESHER LOGIC ----
-      const joiningDate = prof.dateOfJoining ? new Date(prof.dateOfJoining) : null;
-      let isFresher = false;
-
-      if (joiningDate) {
-        const months = getMonthsDifference(joiningDate);
-        isFresher = months <= 3;
-      }
-
       // ---- BASE TASK DATA ----
-      let taskData = {
+      const taskData = {
         employeeId: empId,
         employeeName,
         department,
@@ -288,51 +316,49 @@ exports.createTrainingTask = async (req, res) => {
         batchId: finalBatchId,
         assignedType: isBulkAssign ? "Bulk" : "Single",
         officialEmail: prof.officialEmail,
-        dateOfJoining: joiningDate
+        dateOfJoining: joiningDate,
+        type: assignTo === "FRESHER" ? "Fresher" : "Previous Employee"
       };
 
-      // ---- FRESHER ----
-      if (isFresher) {
-        taskData.type = "Fresher";
-        taskData.extraDetails = {
-          fresherId: empId,
-          fresherName: employeeName,
-          dateOfJoining: joiningDate,
-          batch: finalBatchId || batch,
-          trainingCategory,
-          selectedCourses: Array.isArray(selectedCourses) ? selectedCourses : [],
-          trainingStartDate: trainingStartDate ? new Date(trainingStartDate) : null,
-          trainingEndDate: trainingEndDate ? new Date(trainingEndDate) : null,
-          durationDays: durationDays || parseInt(duration) || 0,
-          Mode,
-          trainingName,
-          trainer,
-          assignedDate: new Date().toISOString(),
-          isBulk: isBulkAssign
-        };
-      }
-
-      // ---- PREVIOUS EMPLOYEE ----
-      else {
-        taskData.type = "Previous Employee";
-        taskData.extraDetails = {
-          dateOfJoining: joiningDate,
-          assignedDate: new Date().toISOString(),
-          durationDays: durationDays || parseInt(duration) || 0,
-          batch: finalBatchId
-        };
-      }
+      // ---- EXTRA DETAILS ----
+      taskData.extraDetails =
+        assignTo === "FRESHER"
+          ? {
+              fresherId: empId,
+              fresherName: employeeName,
+              dateOfJoining: joiningDate,
+              batch: finalBatchId || batch,
+              trainingCategory,
+              selectedCourses: Array.isArray(selectedCourses) ? selectedCourses : [],
+              trainingStartDate: trainingStartDate ? new Date(trainingStartDate) : null,
+              trainingEndDate: trainingEndDate ? new Date(trainingEndDate) : null,
+              durationDays: durationDays || parseInt(duration) || 0,
+              Mode,
+              trainingName,
+              trainer,
+              assignedDate: new Date().toISOString(),
+              isBulk: isBulkAssign
+            }
+          : {
+              dateOfJoining: joiningDate,
+              assignedDate: new Date().toISOString(),
+              durationDays: durationDays || parseInt(duration) || 0,
+              batch: finalBatchId
+            };
 
       const newTask = await TrainingTask.create(taskData);
       createdTasks.push(newTask);
     }
 
+    // ✅ RESPONSE — SUCCESS EVEN IF SOME EMPLOYEES WERE SKIPPED
     return res.status(201).json({
       message: isBulkAssign
         ? "Bulk Training Tasks Created Successfully"
         : "Training Task Created Successfully",
       batchId: finalBatchId,
-      count: createdTasks.length,
+      assignedCount: createdTasks.length,
+      skippedCount: skippedEmployees.length,
+      skippedEmployees,      // optional, remove if you don’t want details
       tasks: createdTasks
     });
 
