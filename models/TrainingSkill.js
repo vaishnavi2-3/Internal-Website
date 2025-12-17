@@ -7,8 +7,14 @@ const trainingSkillSchema = new mongoose.Schema(
     skills: {
       type: [String],
       default: []
+    },
+        confirmed: {
+      type: Boolean,
+      default: false
     }
+
   },
+  
   { timestamps: true }
 );
 
