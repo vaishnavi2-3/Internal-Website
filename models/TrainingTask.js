@@ -59,6 +59,10 @@ type: {
 
     fromDate: { type: Date, required: true },
     toDate: { type: Date, required: true },
+    batchId: {
+  type: String
+},
+
 
     mode: {
       type: String,

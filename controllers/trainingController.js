@@ -210,7 +210,7 @@ exports.createTrainingTask = async (req, res) => {
       duration,
       progress,
       status,
-      assignTo               // MANUAL | FRESHER | PREVIOUS (optional)
+      assignTo               // MANUAL | FRESHER | PREVIOUS
     } = req.body;
 
     // ---- VALIDATION ----
@@ -228,7 +228,6 @@ exports.createTrainingTask = async (req, res) => {
       ? [employeeId]
       : [];
 
-    // ---- DEFAULT ASSIGN TYPE ----
     assignTo = assignTo || "MANUAL";
     const isBulkAssign = employeeIds.length > 1 || assignTo !== "MANUAL";
 
@@ -263,24 +262,21 @@ exports.createTrainingTask = async (req, res) => {
 
     const createdTasks = [];
     const skippedEmployees = [];
+    let finalBatchId = null;
 
     // ---- LOOP EMPLOYEES ----
     for (const prof of professionals) {
       const empId = prof.employeeId;
       if (!empId) continue;
 
-      /* 🚫 ACTIVE SAME COURSE CHECK */
-const activeSameCourse = await TrainingTask.findOne({
-  employeeId: empId,
-  trainingTitle,
-  status: { $in: ["assigned", "in-progress"] },
-  $or: [
-    {
-      fromDate: { $lte: new Date(toDate) },
-      toDate: { $gte: new Date(fromDate) }
-    }
-  ]
-});
+      // 🚫 ACTIVE SAME COURSE (DATE OVERLAP)
+      const activeSameCourse = await TrainingTask.findOne({
+        employeeId: empId,
+        trainingTitle,
+        status: { $in: ["assigned", "in-progress"] },
+        fromDate: { $lte: new Date(toDate) },
+        toDate: { $gte: new Date(fromDate) }
+      });
 
       if (activeSameCourse) {
         if (!isBulkAssign) {
@@ -303,7 +299,7 @@ const activeSameCourse = await TrainingTask.findOne({
         continue;
       }
 
-      /* ❌ COMPLETED SAME COURSE CHECK */
+      // ❌ COMPLETED SAME COURSE
       const completedSameCourse = await TrainingTask.findOne({
         employeeId: empId,
         trainingTitle,
@@ -318,7 +314,7 @@ const activeSameCourse = await TrainingTask.findOne({
         continue;
       }
 
-      /* ✅ OFFICIAL EMAIL */
+      // ✅ OFFICIAL EMAIL
       const officialEmail = prof.officialEmail;
       if (!officialEmail) {
         if (!isBulkAssign) {
@@ -335,27 +331,39 @@ const activeSameCourse = await TrainingTask.findOne({
         continue;
       }
 
-      /* ✅ ENUM-SAFE EMPLOYEE TYPE */
-      let employeeType = "Previous Employee"; // default
+      // ✅ EMPLOYEE NAME FROM PERSONAL DETAILS
+      let employeeName = "Not Provided";
+      const personal = await PersonalDetails.findOne({ officialEmail });
+      if (personal) {
+        employeeName = [
+          personal.firstName,
+          personal.middleName,
+          personal.lastName
+        ].filter(Boolean).join(" ");
+      }
 
+      // ✅ ENUM-SAFE EMPLOYEE TYPE
+      let employeeType = "Previous Employee";
       if (assignTo === "FRESHER") {
         employeeType = "Fresher";
       } else if (assignTo === "PREVIOUS") {
         employeeType = "Previous Employee";
-      } else {
-        // MANUAL → decide by DOJ
-        if (prof.dateOfJoining) {
-          const doj = new Date(prof.dateOfJoining);
-          employeeType = doj >= threeMonthsAgo
+      } else if (prof.dateOfJoining) {
+        employeeType =
+          new Date(prof.dateOfJoining) >= threeMonthsAgo
             ? "Fresher"
             : "Previous Employee";
-        }
       }
 
-      /* ---- CREATE TASK ---- */
+      // ✅ GENERATE BATCH ID ONCE (BULK)
+      if (isBulkAssign && !finalBatchId) {
+        finalBatchId = await generateBatchId(prof.department);
+      }
+
+      // ---- CREATE TASK ----
       const taskData = {
         employeeId: empId,
-        employeeName: prof.employeeName || "Not Provided",
+        employeeName,
         department: prof.department || "Not Assigned",
         managerName: prof.managerName || "Not Assigned",
         trainingTitle,
@@ -366,10 +374,11 @@ const activeSameCourse = await TrainingTask.findOne({
         duration,
         status: (status || "assigned").toLowerCase(),
         progress: progress || 0,
+        batchId: finalBatchId,
         assignedType: isBulkAssign ? "Bulk" : "Single",
         officialEmail,
         dateOfJoining: prof.dateOfJoining || null,
-        type: employeeType   // ✅ ENUM SAFE
+        type: employeeType
       };
 
       const newTask = await TrainingTask.create(taskData);
