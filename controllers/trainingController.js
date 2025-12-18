@@ -201,29 +201,19 @@ function isNullOrEmpty(val) {
 exports.createTrainingTask = async (req, res) => {
   try {
     let {
+      employeeId,            // string OR array
       trainingTitle,
       level,
       fromDate,
       toDate,
       mode,
       duration,
-
-      batch,
-      trainingCategory,
-      selectedCourses,
-      trainingStartDate,
-      trainingEndDate,
-      durationDays,
-      Mode,
-      trainingName,
-      trainer,
-
       progress,
       status,
-      assignTo // "FRESHER" | "PREVIOUS" | "MANUAL"
+      assignTo               // MANUAL | FRESHER | PREVIOUS (optional)
     } = req.body;
 
-    // ---- VALIDATE REQUIRED FIELDS ----
+    // ---- VALIDATION ----
     const requiredFields = { trainingTitle, level, fromDate, toDate };
     for (const field in requiredFields) {
       if (!requiredFields[field]) {
@@ -231,16 +221,29 @@ exports.createTrainingTask = async (req, res) => {
       }
     }
 
+    // ---- NORMALIZE EMPLOYEE IDS ----
+    const employeeIds = Array.isArray(employeeId)
+      ? employeeId
+      : employeeId
+      ? [employeeId]
+      : [];
+
+    // ---- DEFAULT ASSIGN TYPE ----
     assignTo = assignTo || "MANUAL";
+    const isBulkAssign = employeeIds.length > 1 || assignTo !== "MANUAL";
 
     // ---- DATE CALCULATION ----
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-    // ---- FETCH EMPLOYEES FROM PROFESSIONAL DETAILS ----
+    // ---- FETCH EMPLOYEES ----
     let professionals = [];
 
-    if (assignTo === "FRESHER") {
+    if (employeeIds.length > 0) {
+      professionals = await ProfessionalDetails.find({
+        employeeId: { $in: employeeIds }
+      });
+    } else if (assignTo === "FRESHER") {
       professionals = await ProfessionalDetails.find({
         dateOfJoining: { $gte: threeMonthsAgo }
       });
@@ -248,8 +251,6 @@ exports.createTrainingTask = async (req, res) => {
       professionals = await ProfessionalDetails.find({
         dateOfJoining: { $lt: threeMonthsAgo }
       });
-    } else {
-      professionals = await ProfessionalDetails.find();
     }
 
     if (!professionals.length) {
@@ -262,89 +263,101 @@ exports.createTrainingTask = async (req, res) => {
 
     const createdTasks = [];
     const skippedEmployees = [];
-    let finalBatchId = null;
-    const isBulkAssign = professionals.length > 1;
 
     // ---- LOOP EMPLOYEES ----
     for (const prof of professionals) {
+      const empId = prof.employeeId;
+      if (!empId) continue;
 
-      // 🔑 employeeId fallback
-const empId = prof.employeeId;
-if (!empId) {
-  skippedEmployees.push({
-    empId: empId || "(missing)",
-    reason: "employeeId missing in ProfessionalDetails"
-  });
-  continue;
-}
-
-
-// block already-in-training
-const existingTask = await TrainingTask.findOne({
+      /* 🚫 ACTIVE SAME COURSE CHECK */
+const activeSameCourse = await TrainingTask.findOne({
   employeeId: empId,
-  status: { $in: ["assigned", "in-progress"] }
+  trainingTitle,
+  status: { $in: ["assigned", "in-progress"] },
+  $or: [
+    {
+      fromDate: { $lte: new Date(toDate) },
+      toDate: { $gte: new Date(fromDate) }
+    }
+  ]
 });
-if (existingTask) {
-  skippedEmployees.push({ empId, reason: "Already in training" });
-  continue;
-}
 
-// ✅ officialEmail ONLY from ProfessionalDetails
-const officialEmail = prof.officialEmail;
+      if (activeSameCourse) {
+        if (!isBulkAssign) {
+          return res.status(409).json({
+            message: "Employee is already in training for this course",
+            employeeId: empId,
+            activeTraining: {
+              trainingTitle: activeSameCourse.trainingTitle,
+              status: activeSameCourse.status,
+              fromDate: activeSameCourse.fromDate,
+              toDate: activeSameCourse.toDate
+            }
+          });
+        }
 
-if (!officialEmail) {
-  skippedEmployees.push({
-    empId,
-    reason: "Official email missing in ProfessionalDetails"
-  });
-  continue;
-}
-
-const joiningDate = prof.dateOfJoining
-  ? new Date(prof.dateOfJoining)
-  : null;
-
-      // ---- APPLY FRESHER / PREVIOUS RULE ONLY IF DOJ EXISTS ----
-      if (joiningDate) {
-        const months = getMonthsDifference(joiningDate);
-        if (assignTo === "FRESHER" && months > 3) continue;
-        if (assignTo === "PREVIOUS" && months <= 3) continue;
+        skippedEmployees.push({
+          empId,
+          reason: "Employee already in training for this course"
+        });
+        continue;
       }
 
-      const personal = officialEmail
-        ? await PersonalDetails.findOne({ officialEmail })
-        : null;
+      /* ❌ COMPLETED SAME COURSE CHECK */
+      const completedSameCourse = await TrainingTask.findOne({
+        employeeId: empId,
+        trainingTitle,
+        status: { $in: ["completed", "closed"] }
+      });
 
-      const employeeName =
-        [
-          personal?.firstName,
-          personal?.middleName,
-          personal?.lastName
-        ].filter(Boolean).join(" ")
-        || req.body.employeeName
-        || "Not Provided";
-
-      const managerName =
-        prof.managerName ||
-        personal?.managerName ||
-        req.body.managerName ||
-        "Not Assigned";
-
-      const department =
-        prof.department ||
-        req.body.department ||
-        "Not Assigned";
-
-      if (isBulkAssign && !finalBatchId) {
-        finalBatchId = await generateBatchId(department);
+      if (completedSameCourse) {
+        skippedEmployees.push({
+          empId,
+          reason: "Training already completed for this course"
+        });
+        continue;
       }
 
-      // ---- TASK DATA ----
+      /* ✅ OFFICIAL EMAIL */
+      const officialEmail = prof.officialEmail;
+      if (!officialEmail) {
+        if (!isBulkAssign) {
+          return res.status(400).json({
+            message: "Official email missing for employee",
+            employeeId: empId
+          });
+        }
+
+        skippedEmployees.push({
+          empId,
+          reason: "Official email missing in ProfessionalDetails"
+        });
+        continue;
+      }
+
+      /* ✅ ENUM-SAFE EMPLOYEE TYPE */
+      let employeeType = "Previous Employee"; // default
+
+      if (assignTo === "FRESHER") {
+        employeeType = "Fresher";
+      } else if (assignTo === "PREVIOUS") {
+        employeeType = "Previous Employee";
+      } else {
+        // MANUAL → decide by DOJ
+        if (prof.dateOfJoining) {
+          const doj = new Date(prof.dateOfJoining);
+          employeeType = doj >= threeMonthsAgo
+            ? "Fresher"
+            : "Previous Employee";
+        }
+      }
+
+      /* ---- CREATE TASK ---- */
       const taskData = {
         employeeId: empId,
-        employeeName,
-        department,
-        managerName,
+        employeeName: prof.employeeName || "Not Provided",
+        department: prof.department || "Not Assigned",
+        managerName: prof.managerName || "Not Assigned",
         trainingTitle,
         level,
         fromDate: new Date(fromDate),
@@ -353,48 +366,21 @@ const joiningDate = prof.dateOfJoining
         duration,
         status: (status || "assigned").toLowerCase(),
         progress: progress || 0,
-        batchId: finalBatchId,
         assignedType: isBulkAssign ? "Bulk" : "Single",
         officialEmail,
-        dateOfJoining: joiningDate,
-        type: assignTo === "FRESHER" ? "Fresher" : "Previous Employee"
+        dateOfJoining: prof.dateOfJoining || null,
+        type: employeeType   // ✅ ENUM SAFE
       };
-
-      taskData.extraDetails =
-        assignTo === "FRESHER"
-          ? {
-              fresherId: empId,
-              fresherName: employeeName,
-              dateOfJoining: joiningDate,
-              batch: finalBatchId || batch,
-              trainingCategory,
-              selectedCourses: Array.isArray(selectedCourses) ? selectedCourses : [],
-              trainingStartDate: trainingStartDate ? new Date(trainingStartDate) : null,
-              trainingEndDate: trainingEndDate ? new Date(trainingEndDate) : null,
-              durationDays: durationDays || parseInt(duration) || 0,
-              Mode,
-              trainingName,
-              trainer,
-              assignedDate: new Date().toISOString(),
-              isBulk: isBulkAssign
-            }
-          : {
-              dateOfJoining: joiningDate,
-              assignedDate: new Date().toISOString(),
-              durationDays: durationDays || parseInt(duration) || 0,
-              batch: finalBatchId
-            };
 
       const newTask = await TrainingTask.create(taskData);
       createdTasks.push(newTask);
     }
 
-    // ---- RESPONSE ----
+    // ---- FINAL RESPONSE ----
     return res.status(201).json({
       message: isBulkAssign
         ? "Bulk Training Tasks Created Successfully"
         : "Training Task Created Successfully",
-      batchId: finalBatchId,
       assignedCount: createdTasks.length,
       skippedCount: skippedEmployees.length,
       skippedEmployees,
